@@ -11,9 +11,6 @@ class FileJar:
         FileNotFoundError: During init if the directory does not exist.
     """
 
-    _root_dir: Path
-    _jar: dict
-
     def __init__(self, root_dir: Path, jar: dict = None):
         """
         Constructor for a new FileJar.
