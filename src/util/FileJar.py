@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 class FileJar:
@@ -11,32 +11,29 @@ class FileJar:
         FileNotFoundError: During init if the directory does not exist.
     """
 
-    def __init__(self, root_dir: Path, jar: dict = None):
+    def __init__(self, root_dir: Path, create_root_dir: bool = False):
         """
         Constructor for a new FileJar.
 
         Args:
             root_dir (Path): Path object to the root directory
                 associated with the new FileJar.
-            jar (dict, optional): A dictionary containing name and save_paths.
-                Defaults to None.
+            create_root_dir (bool): If `True`, this FileJar's root directory will
+                be created if non-existent.
 
         Raises:
             FileNotFoundError: If `root_dir` is not a directory.
         """
         # Check that root_dir is a directory.
-        if root_dir.is_dir():
-            self._root_dir = root_dir
-        else:
-            raise FileNotFoundError(f"Directory {root_dir} not found!")
+        if not root_dir.is_dir():
+            if create_root_dir and not root_dir.exists():
+                root_dir.mkdir(parents=True)
+            else:
+                raise FileNotFoundError(f"Directory {root_dir} not found!")
 
-        # Init jar
-        if jar is None:
-            self._jar = dict()
-        else:
-            self._jar = jar
+        self._root_dir = root_dir
 
-    def get_file(self, name: str, load_func) -> Any:
+    def get_file(self, name: str, load_func: Callable[[Path], Any]) -> Any:
         """
         Return the file associated with the given `name` using `load_func`.
 
@@ -49,17 +46,18 @@ class FileJar:
             Any: Return of `load_func`.
         """
         try:
-            return load_func(self._jar[name])
+            return load_func(self._root_dir / name)
         except Exception as e:
             print(e)
             return None
 
-    def store_file(self, name: str, save_func) -> Any:
+    def store_file(self, name: str, save_func: Callable[[Path], Any]) -> Any:
         """
-        Store the file `name` in `self.root_dir` using the provided `save_func`.
+        Store the file `name` in this FileJar's root directory using
+        the provided `save_func`.
 
         Args:
-            name (str): _description_
+            name (str): File name of the file to store.
             save_func (function): Function used to save the file, only argument must be
                 the path where the file should be stored.
 
@@ -68,10 +66,7 @@ class FileJar:
         """
 
         # Append name to root directory
-        save_path = self._root_dir / Path(name)
-
-        # Add file to jar
-        self._jar[name] = save_path
+        save_path = self._root_dir / name
 
         # Save file
         try:
