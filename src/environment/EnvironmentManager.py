@@ -1,5 +1,11 @@
 from pathlib import Path
 from os import system
+import socket
+import struct
+import numpy as np
+import threading
+
+DEFAULT_LATENT_CODE_PORT = 6969
 
 
 class EnvironmentManager:
@@ -85,8 +91,41 @@ class EnvironmentManager:
         print(f"======== {agent_file} ========")
         res = system(
             f"conda run -n {EnvironmentManager.CONDA_ENV_PREFIX}_{env_name} "
+            + "--no-capture-output "
             + f"python {agent_file} {args_str} {kwargs_str}"
         )
         print(f"========={'=' * len(str(agent_file))}=========")
 
         return res == 0
+
+    @staticmethod
+    def send_latent_codes(latent_codes: np.ndarray) -> None:
+        """
+        Send latent codes through socket via localhost using `DEFAULT_LATENT_CODE_PORT`.
+
+        Args:
+            latent_codes (np.ndarray): Latent codes to send.
+        """
+        threading.Thread(target=_latent_code_agent, args=(latent_codes,)).start()
+
+
+def _latent_code_agent(latent_codes: np.ndarray) -> None:
+    # Flatten and tranform it to list
+    num_latent_codes = latent_codes.shape[0]
+    latent_codes = latent_codes.flatten().tolist()
+
+    # Setup socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("localhost", DEFAULT_LATENT_CODE_PORT))
+    s.listen(1)
+
+    # Accept incoming connections
+    conn, addr = s.accept()
+
+    # Send data
+    conn.sendall(num_latent_codes.to_bytes(4, "big"))
+    data = struct.pack(f"<{len(latent_codes)}d", *latent_codes)
+    conn.sendall(data)
+
+    # Close connection
+    conn.close()
