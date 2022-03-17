@@ -1,0 +1,18 @@
+channels:
+  - pytorch
+dependencies:
+  - python=3.6.6
+  - pip
+  - scipy=1.1.0 
+  - matplotlib=2.2.2 
+  - qt=5.9.7 
+  - numpy=1.14.3 
+  - pillow=5.1.0 
+  - pytorch=1.1.0
+  - torchvision=0.3.0
+  - cudatoolkit=9.0
+  - h5py=2.8.0
+  - imageio=2.5.0
+  - tqdm=4.63.0
+  - pip:
+    - argparse==1.4.0
