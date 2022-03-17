@@ -25,13 +25,17 @@ class Generator(metaclass=abc.ABCMeta):
         """
         return self._name
 
-    def random_latent_code(self) -> np.ndarray:
+    def random_latent_code(self, n: int = 1) -> np.ndarray:
         """
-        Samples a random latent code based on the statistics of this generator.
+        Samples `n` random latent codes based on the statistics of this generator.
 
         Raises:
             ValueError: If the dimensions of `latent_space_mean()` and
                 `latent_space_std()` do not match.
+
+        Args:
+            n (int): The number of latent codes to sample.
+                Default to 1.
 
         Returns:
             np.ndarray: The new random latent code.
@@ -43,10 +47,10 @@ class Generator(metaclass=abc.ABCMeta):
         if mean.shape != std.shape:
             raise ValueError(
                 "The number of means and standard deviations do not match! "
-                + "The implementaiton of this generator is faulty."
+                + "The implementation of this generator is faulty."
             )
 
-        return np.random.normal(loc=mean, scale=std)
+        return np.random.normal(loc=mean, scale=std, size=(n, std.shape[0]))
 
     @abc.abstractmethod
     def latent_space_std(self) -> np.ndarray:
@@ -71,14 +75,14 @@ class Generator(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def generate(self, latent_codes: list[np.ndarray]) -> list[str]:
+    def generate(self, latent_codes: np.ndarray) -> list[str]:
         """
         Should generate images for the specified latent codes. This will most likely
         involve the launch of a separate agent process using the EnvironmentManager,
         allowing external generators to be launched in appropriate conda environments.
 
         Args:
-            latent_codes (list[np.ndarray]): The latent codes to generate images for.
+            latent_codes (np.ndarray): The latent codes to generate images for.
 
         Returns:
             list[str]: A list of URIs to the generate images, in the same order as the
