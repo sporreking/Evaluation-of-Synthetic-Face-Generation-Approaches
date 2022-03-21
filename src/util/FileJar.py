@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Generator
 
 
 class FileJar:
@@ -36,6 +36,8 @@ class FileJar:
     def get_file(self, name: str, load_func: Callable[[Path], Any]) -> Any:
         """
         Return the file associated with the given `name` using `load_func`.
+        Note that if an exception is raised in `load_func`, `None` will be
+        returned instead.
 
         Args:
             name (str): Name of the file to retrieve.
@@ -43,12 +45,11 @@ class FileJar:
                 the path where the file is located.
 
         Returns:
-            Any: Return of `load_func`.
+            Any: Return of `load_func`, or `None` if an exception is raised from it.
         """
         try:
             return load_func(self._root_dir / name)
         except Exception as e:
-            print(e)
             return None
 
     def store_file(self, name: str, save_func: Callable[[Path], Any]) -> Any:
@@ -61,6 +62,9 @@ class FileJar:
             save_func (function): Function used to save the file, only argument must be
                 the path where the file should be stored.
 
+        Raises:
+            Exception: Potential propagation from `save_func`.
+
         Returns:
             Any: Return of `save_func`.
         """
@@ -69,8 +73,13 @@ class FileJar:
         save_path = self._root_dir / name
 
         # Save file
-        try:
-            return save_func(save_path)
-        except Exception as e:
-            print(e)
-            return None
+        return save_func(save_path)
+
+    def iterdir(self) -> Generator[Path, None, None]:
+        """
+        Returns an iterator over all files in this FileJar's root directory.
+
+        Returns:
+            Generator[Path, None, None]: An iterator over all files in the root directory.
+        """
+        return self._root_dir.iterdir()
