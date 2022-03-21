@@ -1,11 +1,14 @@
 from src.dataset.Dataset import Dataset
 from src.util.FileJar import FileJar
 
+from src.util.ZeroPaddedIterator import zero_padded_iterator
+
 import os, json
 import pandas as pd
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 import numpy as np
+from pathlib import Path
 
 
 class FFHQDataset(Dataset):
@@ -20,9 +23,6 @@ class FFHQDataset(Dataset):
     There should also exist appropriate directories for the labels ("label/")
     and images ("image/").
     """
-
-    # Dataset name
-    DS_NAME = "FFHQ"
 
     # Subdirectory name to the images
     DS_DIR_IMAGES = "image/"
@@ -47,18 +47,23 @@ class FFHQDataset(Dataset):
             resolution (int, optional): The native resolution of the dataset.
                 Defaults to 256.
         """
-        name = self.DS_NAME + "_" + str(resolution)
-        super(FFHQDataset, self).__init__(name)
-        self._resolution = resolution
+        super(FFHQDataset, self).__init__(resolution)
 
-    def get_resolution(self) -> int:
-        """
-        Returns the resolution of the dataset.
+    def get_resolution_invariant_name() -> str:
+        return "FFHQ"
 
-        Returns:
-            int: The resolution of the dataset.
-        """
-        return self._resolution
+    def is_ready(resolution: int) -> bool:
+        return (
+            Path(Dataset.DS_DIR_PREFIX)
+            / FFHQDataset.get_name(resolution)
+            / FFHQDataset.DS_LABELS_NAME
+        ).is_file()
+
+    def get_image_dir(self) -> Path:
+        return self.get_path() / self.DS_DIR_IMAGES
+
+    def get_image_paths(self) -> list[Path]:
+        return self._img_paths
 
     def init_files(self) -> tuple[FileJar, pd.DataFrame]:
         """
@@ -70,13 +75,25 @@ class FFHQDataset(Dataset):
             tuple[FileJar, pd.DataFrame]: FileJar with save paths and
                 a pd.DataFrame containing labels.
         """
-        file_jar = FileJar(self._ds_dir)
+        file_jar = FileJar(self.get_path())
         df = file_jar.get_file(self.DS_LABELS_NAME, pd.read_pickle)
         if df is None:
-            return self._parse_json()
+            res = self._parse_json()
+            self._img_paths = self._calc_img_paths()
+            return res
         else:
             print(f"======= Labels already extracted, skipping extraction =======")
+            self._img_paths = self._calc_img_paths()
             return file_jar, df
+
+    def _calc_img_paths(self) -> list[Path]:
+        ext = next(Path(self.get_image_dir()).iterdir()).name.split(".")[-1]
+        return list(
+            [
+                Path(f"{self.get_image_dir() / s}.{ext}")
+                for s in zero_padded_iterator(0, 70000, 5)
+            ]
+        )
 
     def _parse_json(self) -> tuple[FileJar, pd.DataFrame]:
         """
@@ -94,7 +111,7 @@ class FFHQDataset(Dataset):
                 a pd.DataFrame containing labels.
         """
         # Loop through all json files, save all filenames
-        label_dir_path = self._ds_dir / self.DS_DIR_LABELS
+        label_dir_path = self.get_path() / self.DS_DIR_LABELS
         if label_dir_path.is_dir():
             json_files = [
                 pos_json
@@ -130,8 +147,10 @@ class FFHQDataset(Dataset):
         ).astype("category")
 
         # Create FileJar and store the file.
-        file_jar = FileJar(self._ds_dir)
+        file_jar = FileJar(self.get_path())
         file_jar.store_file(self.DS_LABELS_NAME, df_conc.to_pickle)
+
+        print(f"======= Done parsing JSON =======")
 
         return file_jar, df_conc
 
@@ -151,7 +170,9 @@ class FFHQDataset(Dataset):
         json_f = args[1]
 
         # Parse json
-        with open(os.path.join(self._ds_dir / self.DS_DIR_LABELS, json_f)) as json_file:
+        with open(
+            os.path.join(self.get_path() / self.DS_DIR_LABELS, json_f)
+        ) as json_file:
             json_obj = json.load(json_file)
             if not json_obj:
                 return []
