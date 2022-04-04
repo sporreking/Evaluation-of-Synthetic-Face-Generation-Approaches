@@ -279,3 +279,13 @@ def plot_aux_loss(name: str):
     plt.plot(epochs, valid_loss_scores, label="Validation loss score")
     plt.legend(loc="upper right")
     plt.show()
+
+
+def get_file_jar() -> FileJar:
+    """
+    Returns the file jar used by the model util.
+
+    Returns:
+        FileJar: The file jar used by the model util.
+    """
+    return _file_jar
