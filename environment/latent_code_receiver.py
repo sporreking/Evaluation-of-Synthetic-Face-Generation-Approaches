@@ -1,11 +1,11 @@
 import socket
 import struct
-
+from typing import List
 CHUNK_SIZE = 1024
 DEFAULT_LATENT_CODE_PORT = 6969
 
 
-def receive_latent_codes(num_floats_per_latent_code: int) -> list[float]:
+def receive_latent_codes(num_floats_per_latent_code: int) -> List[float]:
     """
     Receives latent codes using a socket client.
 

@@ -1,6 +1,7 @@
 from src.generator.Generator import Generator
 import numpy as np
 from src.environment.EnvironmentManager import EnvironmentManager as em
+from typing import List
 
 
 class UNetGANGenerator(Generator):
@@ -9,7 +10,10 @@ class UNetGANGenerator(Generator):
     _IMAGE_EXT = ".png"
 
     def __init__(self):
-        super().__init__("U-NetGAN")
+        """
+        UNetGANGenerator constructor.
+        """
+        super().__init__("unetgan")
 
     def latent_space_std(self) -> np.ndarray:
         """
@@ -29,7 +33,7 @@ class UNetGANGenerator(Generator):
         """
         return np.zeros(self._DIM_Z)
 
-    def generate(self, latent_codes: np.ndarray) -> list[str]:
+    def generate(self, latent_codes: np.ndarray) -> List[str]:
         """
         Generate images for the specified latent codes. This will most likely
         involve the launch of a separate agent process using the EnvironmentManager,

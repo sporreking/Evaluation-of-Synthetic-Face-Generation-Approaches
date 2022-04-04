@@ -1,5 +1,6 @@
 import abc
 import numpy as np
+from typing import List
 
 
 class Generator(metaclass=abc.ABCMeta):
@@ -75,7 +76,7 @@ class Generator(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def generate(self, latent_codes: np.ndarray) -> list[str]:
+    def generate(self, latent_codes: np.ndarray) -> List[str]:
         """
         Should generate images for the specified latent codes. This will most likely
         involve the launch of a separate agent process using the EnvironmentManager,
