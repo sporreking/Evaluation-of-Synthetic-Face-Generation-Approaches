@@ -25,12 +25,20 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torchvision
-from torchvision import utils
 import time as time
 from latent_code_receiver import receive_latent_codes
 
 # Constants
-BATCH_SIZE = 40  # * Lower this if memory problems
+BATCH_SIZE = 2  # * Lower this if memory problems
+
+# Setup path
+old_path = Path().absolute()
+new_path = old_path / "environment" / "unetgan"
+sys.path.append(str(new_path))
+os.chdir(new_path)
+
+# Local from unetgan
+import utils
 
 
 def load_weights(
@@ -327,16 +335,32 @@ def float_list_to_tensor(config: dict, latent_codes: list) -> torch.Tensor:
     return torch.reshape(z, (num_latent_codes, dim_z)).to("cuda")
 
 
+def get_generator():
+    """
+    Returns the generator.
+
+    Note that originally, BigGAN uses G(z,y), but in our unconditional case,
+    it is transformed to return the generator in the classic G(z) format.
+
+    Returns:
+        BigGan: The generator.
+    """
+    # Setup their argparser
+    parser = utils.prepare_parser()
+
+    # Setup arguments in config
+    config = vars(parser.parse_known_args()[0])
+    config = setup_config(config)
+
+    # Load the generator
+    G = load_generator(config)
+
+    # Change back path
+    os.chdir(old_path)
+    return lambda z: G(z, G.shared(torch.zeros(size=(z.size()[0],)).float().to("cuda")))
+
+
 if __name__ == "__main__":
-
-    # Setup path
-    new_path = Path().absolute() / "environment" / "unetgan"
-    sys.path.append(str(new_path))
-
-    # Local from unetgan
-    os.chdir(new_path)
-    import utils
-
     # Setup their argparser
     parser = utils.prepare_parser()
 
@@ -365,15 +389,5 @@ if __name__ == "__main__":
     # Arguments from load_pretrained_ffhq.sh, relative paths from unetgan folder.
     # Base root directory where sampling directories are stored.
     config["base_root"] = "./out"  #! modify this
-
-    # Path to the directory where the hierarchical images are stored.
-    config["data_folder"] = "../../../ffhq256/images/hierarchical/"  #! Modify this
-
-    #! Placeholder
-    # z = (
-    #    torch.from_numpy(np.random.random_sample(size=(num_samples, 128)) * 2 - 1)
-    #    .float()
-    #    .to("cuda")
-    # )
 
     main(config, z)
