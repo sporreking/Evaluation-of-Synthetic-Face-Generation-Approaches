@@ -29,6 +29,10 @@ PARAM_CENTER = "center"
 AUX_MODEL_NAME = "evaluation_embedding"
 MODEL_PARAM_NU = 0.01
 
+#! Projection Constants
+DS_PROJ_FILE_PREFIX = "ee_proj"
+DS_PROJ_BATCH_SIZE = 25
+
 #! Network
 class DeepSVDDNet(torch.nn.Module):
     """
@@ -404,6 +408,95 @@ def train(dataset: Dataset, start_state: ModelUtil.AuxModelInfo = None) -> None:
 
     # Clean up
     empty_cache()
+
+
+#! Projecting real samples
+
+
+def _ds_proj_file_name(dataset: Dataset) -> str:
+    return f"{DS_PROJ_FILE_PREFIX}_{dataset.get_name(dataset.get_resolution())}"
+
+
+def project(dataset: Dataset) -> np.ndarray:
+    """
+    Projects the images in the given dataset through the evaluation embedding
+    and saves the result to disk. Make sure that the evaluation embedding has
+    been trained before calling this function.
+
+    The projections may also be fetched with `get_projections(dataset)`.
+
+    Args:
+        dataset (Dataset): The dataset to project
+
+    Raises:
+        ValueError: If the evaluation embedding has not yet been trained.
+
+    Returns:
+        np.ndarray: The projections where each row corresponds to a sample.
+    """
+
+    # Sanity check
+    if ModelUtil.load_aux_best(AUX_MODEL_NAME) is None:
+        raise ValueError("Cannot project before training!")
+
+    # Load device
+    device = get_default_device()
+
+    # Send evaluation embedding to device
+    ee = to_device(get(), device)
+
+    # Load dataset images
+    real_images = dataset.to_torch_dataset(
+        T.Compose(
+            [
+                T.ToTensor(),
+                T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ]
+        )
+    )
+
+    # Create dataset loader
+    real_loader = torch.utils.data.DataLoader(
+        real_images, batch_size=DS_PROJ_BATCH_SIZE, shuffle=False, num_workers=2
+    )
+
+    # Project images
+    projections = np.zeros((len(dataset), ee.OUTPUT_DIM))
+    for i, images in tqdm(
+        enumerate(real_loader), total=len(real_loader), desc="Projecting dataset"
+    ):
+        projections[i * DS_PROJ_BATCH_SIZE : ((i + 1) * DS_PROJ_BATCH_SIZE), :] = (
+            ee(to_device(images, device)).cpu().detach().numpy()
+        )
+
+    # Save projections
+    ModelUtil.get_file_jar().store_file(
+        _ds_proj_file_name(dataset),
+        lambda p: np.save(p, projections),
+    )
+
+    return projections
+
+
+def get_projections(dataset: Dataset) -> np.ndarray:
+    """
+    Returns the projections of the specified dataset through the
+    evaluation embedding if they have been projected with
+    `project(dataset)` before. If the projection has not yet been
+    performed, `None` will be returned instead.
+
+    Args:
+        dataset (Dataset): The dataset whose projections should be fetched.
+
+    Returns:
+        np.ndarray: The projections where each row corresponds to a sample.
+            Note that if the projections have not yet been performed (with
+            `project(dataset)`) the function will return `None`.
+    """
+    return ModelUtil.get_file_jar().get_file(
+        f"{_ds_proj_file_name(dataset)}.npy",
+        np.load,
+    )
 
 
 #! Fetching
