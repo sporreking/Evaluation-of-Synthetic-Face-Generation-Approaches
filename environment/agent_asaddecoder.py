@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from pathlib import Path
 import sys
+from typing import Callable
 import torch
 import math
 from tqdm import tqdm
@@ -17,6 +18,7 @@ from src.controller.ASADControllerModels import (
 )
 
 from src.util.ModelUtil import AuxModelInfo, save_aux, load_aux_best
+from src.generator.Generator import Generator
 
 
 def _get_config() -> dict:
@@ -33,8 +35,8 @@ def _get_config() -> dict:
 
 def main():
     """
-    Train decoder named `decoder_name` using generator
-    named `generator_name`.
+    Train decoder specified by the `decoder_name` parameter using generator
+    specified by the `generator_name` parameter.
 
     Requires classifier named `classifier_name`
     associated with the decoder.
@@ -55,7 +57,9 @@ def main():
     _setup_decoder(config, Gen(), G)
 
 
-def _setup_decoder(config: dict, gen, G) -> None:
+def _setup_decoder(
+    config: dict, gen: Generator, G: Callable[[torch.Tensor], torch.Tensor]
+) -> None:
     # Setup GPU
     device = CU.get_default_device()
 
@@ -75,7 +79,10 @@ def _setup_decoder(config: dict, gen, G) -> None:
 
 
 def _decoder_loss(
-    control_vectors: torch.Tensor, codes: torch.Tensor, cls_model, G
+    control_vectors: torch.Tensor,
+    codes: torch.Tensor,
+    cls_model: Callable[[torch.Tensor], torch.Tensor],
+    G: Callable[[torch.Tensor], torch.Tensor],
 ) -> torch.Tensor:
     # To avoid taking log of zero
     eps = 0.000001
@@ -97,13 +104,13 @@ def _decoder_loss(
 
 
 def _fit_decoder(
-    config,
-    model,
-    cls_model,
-    device,
+    config: dict,
+    model: Callable[[torch.Tensor], torch.Tensor],
+    cls_model: Callable[[torch.Tensor], torch.Tensor],
+    device: torch.device,
     name: str,
-    gen,
-    G,
+    gen: Generator,
+    G: Callable[[torch.Tensor], torch.Tensor],
 ) -> None:
     torch.cuda.empty_cache()
 
@@ -112,7 +119,7 @@ def _fit_decoder(
     val_losses = []
 
     # Create optimizers
-    opt = torch.optim.Adam(model.parameters())
+    opt = torch.optim.AdamW(model.parameters())
 
     # Setup batches
     n_batches = math.floor(config["iter_per_epoch"] / config["batch_size"])
@@ -165,7 +172,14 @@ def _fit_decoder(
     pass
 
 
-def _train_decoder(config, model, cls_model, codes, opt, G):
+def _train_decoder(
+    config: dict,
+    model: Callable[[torch.Tensor], torch.Tensor],
+    cls_model: Callable[[torch.Tensor], torch.Tensor],
+    codes: torch.Tensor,
+    opt,
+    G: Callable[[torch.Tensor], torch.Tensor],
+):
     # Clear model gradients
     opt.zero_grad()
     torch.cuda.empty_cache()
@@ -182,7 +196,13 @@ def _train_decoder(config, model, cls_model, codes, opt, G):
     return loss.item()
 
 
-def _validate_decoder(config, model, cls_model, codes, G):
+def _validate_decoder(
+    config: dict,
+    model: Callable[[torch.Tensor], torch.Tensor],
+    cls_model: Callable[[torch.Tensor], torch.Tensor],
+    codes: torch.Tensor,
+    G: Callable[[torch.Tensor], torch.Tensor],
+):
     # Clear model gradients
     model.eval()
     torch.cuda.empty_cache()
