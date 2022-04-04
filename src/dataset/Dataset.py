@@ -44,6 +44,16 @@ class Dataset(metaclass=abc.ABCMeta):
         """
         return self._labels
 
+    @abc.abstractmethod
+    def get_processed_labels(self) -> pd.DataFrame:
+        """
+        Should returns labels of the dataset where all labels
+        are between 0 and 1.
+
+        Returns:
+            pd.DataFrame: Contains ID and labels for the images in the dataset.
+        """
+
     def get_path(self) -> Path:
         """
         Returns the path to the dataset directory.
@@ -124,19 +134,39 @@ class Dataset(metaclass=abc.ABCMeta):
         """
         pass
 
-    def to_torch_dataset(self, transform) -> TorchImageDataset:
+    def to_torch_dataset(
+        self, transform, use_labels=True, attr: str = None, use_processed_labels=True
+    ) -> TorchImageDataset:
         """
         Returns a new TorchImageDataset instance, used for representing a torch
         compatible version of this dataset.
 
+
         Args:
             transform (Any): Transformations to apply to the data before using
-            it for training. Transforms are found in the `torchvision.transforms` module.
+                it for training. Transforms are found in the `torchvision.transforms` module.
+            use_labels (bool, optional): True if labels should be used. Defaults to True.
+            attr (str, optional): Attribute used,
+                if attr is not None, use_labels must be true. Defaults to None.
+            use_processed_labels (bool, optional): Uses processed labels if True.
+                Processed labels have their values between 0-1. Defaults to True.
 
         Returns:
-            TorchImageDataset: A torch compatible version of this dataset.
+            TorchImageDataset: TorchImageDataset: A torch compatible version of this dataset.
         """
-        return TorchImageDataset(self.get_image_paths(), transform)
+        if use_labels:
+            return (
+                TorchImageDataset(
+                    self.get_image_paths(), transform, self.get_processed_labels(), attr
+                )
+                if use_processed_labels
+                else TorchImageDataset(
+                    self.get_image_paths(), transform, self.get_labels(), attr
+                )
+            )
+
+        else:
+            return TorchImageDataset(self.get_image_paths(), transform, attr=attr)
 
     @abc.abstractmethod
     def init_files(self) -> tuple[FileJar, pd.DataFrame]:
