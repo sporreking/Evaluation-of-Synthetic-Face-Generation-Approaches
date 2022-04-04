@@ -2,6 +2,8 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+from typing import Union
+
 from src.util.FileJar import FileJar
 
 
@@ -94,7 +96,7 @@ class Population:
             uris (list[str]): Paths leading to the sample images.
             filter_bitmaps (list[int]): Bitmaps describing what filters the samples have
                 passed. The order of the bits are analogous to the order of filter
-                appearence in the FilterRegistry.
+                appearance in the FilterRegistry.
             append (bool, optional): If `True`, the samples will be appended onto the
                 existing population. Otherwise, all current samples will be replaced.
                 Defaults to True.
@@ -119,16 +121,16 @@ class Population:
         ):
             raise ValueError("Input dimensions do not match!")
 
+        # Create DataFrame if non-existent
+        if self._data is None or not append:
+            self._create_dataframe(attributes.keys())
+
         # Sanity check (attributes)
         for a in attributes.keys():
             if a not in self._data.columns:
                 raise ValueError(
                     f"Invalid attribute '{a}'. Must be one of: {self.get_attributes()}"
                 )
-
-        # Create DataFrame if non-existent
-        if self._data is None or not append:
-            self._create_dataframe(attributes.keys())
 
         # Add all new samples
         self._data = pd.concat(
@@ -176,7 +178,7 @@ class Population:
             uri (str): A path leading to the sample image.
             filter_bitmap (int, optional): A bitmap describing what filters this
                 sample has passed. The order of the bits are analogous to the order of
-                filter appearence in the FilterRegistry. Defaults to 0.
+                filter appearance in the FilterRegistry. Defaults to 0.
             append (bool, optional): If `True`, this sample will be appended onto the
                 existing population. Otherwise, all current samples will be replaced.
                     Defaults to True.
@@ -224,7 +226,7 @@ class Population:
         if save_to_disk:
             self._save_to_disk()
 
-    def remove(self, index: list[int] | int) -> None:
+    def remove(self, index: Union[list[int], int]) -> None:
         """
         Removes the sample with the specified `index`.
 
@@ -233,10 +235,10 @@ class Population:
         """
         self._data = self._data.drop(index)
 
-    def __getitem__(self, key: int | slice) -> pd.DataFrame:
+    def __getitem__(self, key: Union[int, slice]) -> pd.DataFrame:
         return self.get_data(key)
 
-    def get_data(self, indices: list[int] | int = None) -> pd.DataFrame:
+    def get_data(self, indices: Union[list[int], int] = None) -> pd.DataFrame:
         """
         Returns the data of the samples with the specified `indices`.
 
