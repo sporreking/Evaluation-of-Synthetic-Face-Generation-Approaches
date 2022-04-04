@@ -65,6 +65,34 @@ class FFHQDataset(Dataset):
     def get_image_paths(self) -> list[Path]:
         return self._img_paths
 
+    def get_processed_labels(self) -> pd.DataFrame:
+        df = self._labels.copy()
+        # Transform gender
+        df["gender"] = _category_to_float(df["gender"], {"female": 0, "male": 1})
+
+        # Fix bools and float32s
+        for attr in df.columns:
+            df_attr = df[attr]
+            dtype = df_attr.dtypes
+            if dtype == bool:
+                df[attr] = _bool_to_binary(df_attr)
+            elif dtype == np.float32:
+                # Poses
+                if "headPose" in attr:
+                    df[attr] = _min_max_scaler(df_attr, min=-90, max=90)
+
+                # Age
+                elif df_attr.min() >= 0 and df_attr.max() > 1:
+                    df[attr] = _min_max_scaler(df_attr)
+
+                # Already between 0 and 1.
+                else:
+                    continue
+
+        # Remove redundant columns
+        df = df.select_dtypes(include=["float32"])
+        return df
+
     def init_files(self) -> tuple[FileJar, pd.DataFrame]:
         """
         Initilizes the label files related to the dataset.
@@ -273,3 +301,29 @@ class FFHQDataset(Dataset):
 
             json_norm.index = [index]
         return json_norm
+
+
+def _category_to_float(df, d: dict):
+    return df.replace(d).astype(int).astype(np.float32)
+
+
+def _bool_to_binary(df):
+    return df.astype(int).astype(np.float32)
+
+
+def _min_max_scaler(df, min=None, max=None):
+    """
+    Min-max scaler scaling dataframe from min to max, such that
+    all values lies within this range. Calculates min and max if not provided.
+    """
+    min_vals = df.min()
+    if not min is None:
+        min_vals = df.copy()
+        min_vals.values[:] = min
+
+    max_vals = df.max()
+    if not min is None:
+        max_vals = df.copy()
+        max_vals.values[:] = max
+
+    return (df - min_vals) / (max_vals - min_vals)
