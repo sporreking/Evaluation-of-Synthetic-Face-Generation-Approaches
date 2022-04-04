@@ -55,28 +55,32 @@ class EnvironmentManager:
         return res == 0
 
     @staticmethod
-    def run(env_name: str, *args, **kwargs) -> int:
+    def run(agent_name: str, env_name: str = None, *args, **kwargs) -> int:
         """
-        This function will start the agent of the specified environment in a new system process.
-        For this to work, there must be a file `environment/agent_{env_name}.py` which will
-        be launched in the specified conda environment. Note that the environment must be
-        created through `EnvironmentManager.setup(env_name)` first.
+        This function will start the specified agent(named `agent_name`) of the specified
+        environment in a new system process.For this to work,
+        there must be a file `environment/agent_{agent_name}.py` which will be launched in
+        the specified conda environment. Note that the environment must be created through
+        `EnvironmentManager.setup(env_name)` first.
 
         All trailing arguments and keyworks arguments will be passed to the agent in a CLI format.
 
         Args:
-            env_name (str): The name of the environment to run.
-
+            agent_name (str): The name of the file to run.
+            env_name (str): The name of the environment to run. If env_name is None, `env_name` is
+                set to `agent_name`. Defaults to None.
         Raises:
             FileNotFoundError: If the agent file could not be found.
 
         Returns:
             bool: `True` if the agent process exited successfully.
         """
+        if env_name is None:
+            env_name = agent_name
 
         # Find agent file
         agent_file = EnvironmentManager.ENV_ROOT_DIR / Path(
-            f"{EnvironmentManager.AGENT_FILE_PREFIX}_{env_name}.py"
+            f"{EnvironmentManager.AGENT_FILE_PREFIX}_{agent_name}.py"
         )
 
         # Sanity check
@@ -85,7 +89,7 @@ class EnvironmentManager:
 
         # Compile arguments
         args_str = " ".join([str(arg) for arg in args])
-        kwargs_str = " ".join([f"--{str(k)} '{str(v)}'" for k, v in kwargs.items()])
+        kwargs_str = " ".join([f'--{str(k)} "{str(v)}"' for k, v in kwargs.items()])
 
         # Start the conda process
         print(f"======== {agent_file} ========")

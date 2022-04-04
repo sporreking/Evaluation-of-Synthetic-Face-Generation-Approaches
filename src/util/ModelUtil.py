@@ -1,7 +1,8 @@
-from typing import OrderedDict
+from collections import OrderedDict
 from pathlib import Path
 import re
-
+from typing import Tuple, List
+import inspect
 from src.util.FileJar import FileJar
 
 from matplotlib import pyplot as plt
@@ -27,7 +28,7 @@ class AuxModelInfo:
 
     def __init__(
         self,
-        state: OrderedDict[str, torch.Tensor],
+        state: OrderedDict,
         epoch: int,
         batch: int,
         num_batches_per_epoch: int,
@@ -53,7 +54,7 @@ class AuxModelInfo:
         self._valid_loss = valid_loss
 
     @property
-    def state(self) -> OrderedDict[str, torch.Tensor]:
+    def state(self) -> OrderedDict:
         """
         Get the state_dict of the auxiliary model.
         """
@@ -100,10 +101,10 @@ def _full_name(name: str, epoch: int, batch: int) -> str:
 
 
 def _is_epoch_batch_format(name: str) -> bool:
-    return bool(re.match(r"^[A-Za-z_]+_e[0-9]+_b[0-9]+\.pt$", name))
+    return bool(re.match(r"^[A-Za-z0-9_]+_e[0-9]+_b[0-9]+\.pt$", name))
 
 
-def _epoch_batch_from_full_name(full_name: str) -> tuple[int, int]:
+def _epoch_batch_from_full_name(full_name: str) -> Tuple[int, int]:
     e, b = full_name.split("_")[-2:]
     return (int(e[1:]), int(b.split(".")[0][1:]))
 
@@ -112,10 +113,19 @@ def _best_name(name: str) -> str:
     return f"{name}_best.{SAVE_FILE_EXT}"
 
 
+def _aux_save_func(info: AuxModelInfo):
+    return (
+        (lambda p: torch.save(info.state, p))
+        if "_use_new_zipfile_serialization"
+        not in inspect.signature(torch.save).parameters
+        else (lambda p: torch.save(info.state, p, _use_new_zipfile_serialization=False))
+    )
+
+
 def _load_aux_with_full_name(
     full_name: str,
 ) -> AuxModelInfo:
-    state = _file_jar.get_file(full_name, torch.load)
+    state = _file_jar.get_file(full_name, lambda p: torch.load(p, map_location="cpu"))
 
     # Check if load failed
     if state is None:
@@ -165,14 +175,18 @@ def save_aux(
 
     # Save model
     _file_jar.store_file(
-        _full_name(name, info.epoch, info.batch), lambda p: torch.save(info.state, p)
+        _full_name(name, info.epoch, info.batch),
+        _aux_save_func(info),
     )
 
     # Save model as best if applicable
     if save_best:
         best = load_aux_best(name)
         if best is None or info.valid_loss < best.valid_loss:
-            _file_jar.store_file(_best_name(name), lambda p: torch.save(info.state, p))
+            _file_jar.store_file(
+                _best_name(name),
+                _aux_save_func(info),
+            )
 
 
 def load_aux(name: str, epoch: int, batch: int) -> AuxModelInfo:
@@ -210,7 +224,7 @@ def load_aux_best(
     return _load_aux_with_full_name(_best_name(name))
 
 
-def get_available_aux_epoch_batch_pairs(name: str) -> list[tuple[int, int]]:
+def get_available_aux_epoch_batch_pairs(name: str) -> List[Tuple[int, int]]:
     """
     Returns tuples of available epoch and batch versions of the auxiliary
     model associated with the specified name.
@@ -256,7 +270,7 @@ def plot_aux_loss(name: str):
     order = epochs.argsort()
     epochs = epochs[order]
 
-    # Extract the loss scores and sort accprding to epoch order
+    # Extract the loss scores and sort according to epoch order
     train_loss_scores = np.array([m.train_loss for m in models])[order]
     valid_loss_scores = np.array([m.valid_loss for m in models])[order]
 
