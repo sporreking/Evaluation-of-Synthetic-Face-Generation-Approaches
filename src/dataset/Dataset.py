@@ -35,6 +35,18 @@ class Dataset(metaclass=abc.ABCMeta):
         # Call abstract method
         self._file_jar, self._labels = self.init_files()
 
+    def __len__(self) -> int:
+        return self.num_samples()
+
+    def num_samples(self) -> int:
+        """
+        Returns the number of samples (images) contained by this dataset.
+
+        Returns:
+            int: The number of sample (images) contained by this dataset.
+        """
+        return len(self.get_image_paths())
+
     def get_labels(self) -> pd.DataFrame:
         """
         Returns labels of the dataset.
