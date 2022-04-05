@@ -20,6 +20,7 @@ from src.controller.ASADControllerModels import get_dec_arch, get_cls_arch
 CLASS_PREFIX = "CLS"
 DECODER_PREFIX = "DEC"
 DECODER_AGENT_NAME = "asaddecoder"
+ASAD_NAME = "ASAD"
 
 # Setup modes
 # TODO implement continue
@@ -43,7 +44,7 @@ class ASADController(Controller):
             ds (Dataset): Dataset for training the classifiers.
             attrs (list[str]): Attributes from the dataset `ds` to be used.
         """
-        super().__init__("ASAD", gen)
+        super().__init__(ASAD_NAME, gen)
 
         # Check attribute names
         if any("_" in a for a in attrs):

@@ -3,6 +3,8 @@ import numpy as np
 from src.environment.EnvironmentManager import EnvironmentManager as em
 from typing import List
 
+UNETGAN_NAME = "unetgan"
+
 
 class UNetGANGenerator(Generator):
     _DIM_Z = 128
@@ -13,7 +15,7 @@ class UNetGANGenerator(Generator):
         """
         UNetGANGenerator constructor.
         """
-        super().__init__("unetgan")
+        super().__init__(UNETGAN_NAME)
 
     def latent_space_std(self) -> np.ndarray:
         """
@@ -50,7 +52,7 @@ class UNetGANGenerator(Generator):
         em.send_latent_codes(latent_codes)
 
         # Run U-NetGAN
-        em.run("unetgan")
+        em.run(UNETGAN_NAME)
 
         # Return list of URIs
         return [
