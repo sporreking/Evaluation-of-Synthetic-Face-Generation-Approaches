@@ -10,6 +10,10 @@ from multiprocessing import Pool, cpu_count
 import numpy as np
 from pathlib import Path
 
+_DEFAULT_RES = 256
+FFHQ_NAME = "FFHQ"
+FFHQ_DEF_NAME = FFHQ_NAME + "_" + str(_DEFAULT_RES)
+
 
 class FFHQDataset(Dataset):
     """
@@ -33,7 +37,7 @@ class FFHQDataset(Dataset):
     # Filename of the extracted labels
     DS_LABELS_NAME = "labels.pkl"
 
-    def __init__(self, resolution: int = 256):
+    def __init__(self, resolution: int = _DEFAULT_RES):
         """
         Constructor which extract labels from the dataset and saves to disk.
         This process is managed by a `FileJar` which checks if
@@ -45,12 +49,12 @@ class FFHQDataset(Dataset):
 
         Args:
             resolution (int, optional): The native resolution of the dataset.
-                Defaults to 256.
+                Defaults to `_DEFAULT_RES`.
         """
         super(FFHQDataset, self).__init__(resolution)
 
     def get_resolution_invariant_name() -> str:
-        return "FFHQ"
+        return FFHQ_NAME
 
     def is_ready(resolution: int) -> bool:
         return (
