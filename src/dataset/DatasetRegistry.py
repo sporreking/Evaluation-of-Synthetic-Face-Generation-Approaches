@@ -1,24 +1,19 @@
-from src.dataset.FFHQDataset import FFHQDataset
+from src.dataset.FFHQDataset import FFHQDataset, FFHQ_DEF_NAME
 from src.dataset.Dataset import Dataset
+from src.core.Registry import Registry
 
 
-class DatasetRegistry:
+class DatasetRegistry(Registry):
     """
-    Static class used for initialization and storing of all subclasses of the
+    Static class implementing the abstract Registry class
+    used for initialization and storing of all subclasses of the
     Dataset class.
+
+    * If more Datasets are implemented they must be manually added
+    to the internal storage (`_DATASETS`) of this class.
     """
 
-    _DATASETS = None
-
-    @staticmethod
-    def init_registry():
-        """
-        Static method to initialize `DATASETS` with Dataset subclasses.
-        Calls the constructor for each dataset with predefined parameters.
-
-        If more dataset are implemented they should be added in this function.
-        """
-        DatasetRegistry._DATASETS = dict(FFHQ_256=FFHQDataset(256))
+    _DATASETS = {FFHQ_DEF_NAME: FFHQDataset}
 
     @staticmethod
     def get_names() -> list[str]:
@@ -31,7 +26,7 @@ class DatasetRegistry:
         return list(DatasetRegistry._DATASETS.keys())
 
     @staticmethod
-    def get_dataset(name: str) -> Dataset:
+    def get_resource(name: str) -> Dataset:
         """
         Returns a dataset with the given `name` from the registry.
 
@@ -44,11 +39,5 @@ class DatasetRegistry:
         return DatasetRegistry._DATASETS[name]
 
     @staticmethod
-    def get_datasets() -> list[Dataset]:
-        """
-        Returns all datasets from the registry.
-
-        Returns:
-            list[Dataset]: All datasets from the registry.
-        """
+    def get_resources() -> list[Dataset]:
         return list(DatasetRegistry._DATASETS.values())
