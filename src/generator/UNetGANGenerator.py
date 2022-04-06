@@ -2,6 +2,8 @@ from src.generator.Generator import Generator
 import numpy as np
 from src.environment.EnvironmentManager import EnvironmentManager as em
 from typing import List
+import os.path
+from os import path
 
 UNETGAN_NAME = "unetgan"
 
@@ -54,8 +56,14 @@ class UNetGANGenerator(Generator):
         # Run U-NetGAN
         em.run(UNETGAN_NAME)
 
-        # Return list of URIs
-        return [
+        # Construct list of URIs
+        uris = [
             self._PATH_TO_IMAGES + str(i) + self._IMAGE_EXT
             for i in range(latent_codes.shape[0])
         ]
+
+        # Confirm that images have been generated
+        if any([not path.isfile(uri) for uri in uris]):
+            raise FileNotFoundError("Could not find image(s) from Generator!")
+        else:
+            return uris
