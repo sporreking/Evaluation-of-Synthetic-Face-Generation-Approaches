@@ -194,30 +194,30 @@ def sample_generator(G, config: dict, z: torch.Tensor) -> None:
 
     # Setup batches
     n = z.size()[0]
-    batches = math.floor(n / config["batch_size"])
     z_batches = torch.split(z, config["batch_size"])
+    n_batches = len(z_batches)
 
-    # Define conditional labels, zero in the unconditional case
-    y = torch.zeros(size=(n,)).float().to("cuda")
-    y_batches = torch.split(y, config["batch_size"])
-
-    print(f"Generating {n} images in {batches} batches.")
+    print(f"Generating {n} images in {n_batches} batches.")
     start_id = 0
     with torch.no_grad():
-        for i in range(batches):
-            print(f"Generating batch {i+1}/{batches}.")
-            z_batch = z_batches[i]
-            y_batch = y_batches[i]
-            n_batch = z_batch.size()[0]
+        for i, z_batch in enumerate(z_batches):
+            print(f"Generating batch {i+1}/{n_batches}.")
+            curr_batch_size = z_batch.size()[0]
 
             # Sample the generator
-            G_z = G(z_batch, G.shared(y_batch))
+            # Define unconditional labels (zero in the unconditional case)
+            G_z = G(
+                z_batch,
+                G.shared(torch.zeros(size=(curr_batch_size,)).float().to("cuda")),
+            )
 
             # Save images to disk
-            save_images(G_z, config, n_batch, start_id)
+            save_images(G_z, config, curr_batch_size, start_id)
 
-            start_id += n_batch
-    print(f"Image generation completed in {(time.time() - start_time)/60} minutes!")
+            start_id += curr_batch_size
+    print(
+        f"Image generation completed in {round((time.time() - start_time)/60, 2)} minutes!"
+    )
 
 
 def setup_config(config: dict) -> dict:
