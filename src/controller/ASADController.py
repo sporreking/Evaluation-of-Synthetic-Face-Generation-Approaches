@@ -407,8 +407,8 @@ class ASADController(Controller):
 
         # Train decoder using generator env.
         em.run(
-            gen_name,
             DECODER_AGENT_NAME,
+            gen_name,
             epochs=epochs,
             iter_per_epoch=iter_per_epoch,
             batch_size=batch_size,
