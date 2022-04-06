@@ -94,8 +94,7 @@ class EnvironmentManager:
         # Start the conda process
         print(f"======== {agent_file} ========")
         res = system(
-            f"conda run -n {EnvironmentManager.CONDA_ENV_PREFIX}_{env_name} "
-            + "--no-capture-output "
+            f"conda activate {EnvironmentManager.CONDA_ENV_PREFIX}_{env_name} && "
             + f"python {agent_file} {args_str} {kwargs_str}"
         )
         print(f"========={'=' * len(str(agent_file))}=========")
