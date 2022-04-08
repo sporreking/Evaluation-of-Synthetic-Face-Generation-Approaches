@@ -48,7 +48,10 @@ class AlphaPrecisionSampleMetricDescription(SampleMetricDescription):
             info = None
             if mode == SETUP_MODE_CONTINUE:
                 info = ModelUtil.load_aux_best(EE.AUX_MODEL_NAME)
-                print(f"Starting from (epoch, batch) = ({info.epoch}, {info.batch})")
+                if info is not None:
+                    print(
+                        f"Starting from (epoch, batch) = ({info.epoch}, {info.batch})"
+                    )
             EE.train(dataset, info)
 
         # Project samples
@@ -56,18 +59,11 @@ class AlphaPrecisionSampleMetricDescription(SampleMetricDescription):
 
     @staticmethod
     def is_ready(dataset: Dataset) -> bool:
-        return (
-            EE.get() is not None
-            and ModelUtil.get_file_jar().get_file(
-                AlphaPrecisionSampleMetricDescription._ds_proj_file_name(dataset),
-                np.load,
-            )
-            is not None
-        )
+        return EE.get() is not None and EE.get_projections(dataset) is not None
 
     @staticmethod
     def calc(data: pd.DataFrame, dataset: Dataset, **parameters: Any) -> np.ndarray:
-        ee = EE.get()
+        ee = EE.get()  # TODO: DOCSTRING
 
         # Sanity check
         if ee is None:
@@ -88,12 +84,7 @@ class AlphaPrecisionSampleMetricDescription(SampleMetricDescription):
         # Load population images
         pop_images = TorchImageDataset(
             [p for p in data.iloc[:, 2]],
-            T.Compose(
-                [
-                    T.ToTensor(),
-                    T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                ]
-            ),
+            EE.get_inception_image_transform(),
         )
 
         # Create population loader
@@ -117,14 +108,17 @@ class AlphaPrecisionSampleMetricDescription(SampleMetricDescription):
 
         print(f"r_alpha_hat: {r_alpha_hat}")
 
+        # Get inception model
+        inception = to_device(EE.get_inception_model(), device)
+
         # Compute output
         output = np.zeros(data.shape[0])
         for i, image in tqdm(
             enumerate(pop_loader), total=len(pop_loader), desc="Computing metrics"
         ):
-            image = to_device(image, device)
+            data = inception(to_device(image, device))
 
-            X_g_tilde = ee(image)
+            X_g_tilde = ee(data)
 
             dists_from_center = (
                 torch.linalg.norm(X_g_tilde - ee.get_parameter(EE.PARAM_CENTER), axis=1)
