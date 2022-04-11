@@ -381,8 +381,8 @@ class ASADController(Controller):
     def _setup_decoder(
         self,
         attr: str,
-        epochs: int = 50,
-        iter_per_epoch: int = 1000,
+        epochs: int = 15,
+        iter_per_epoch: int = 2000,
         batch_size: int = 3,
     ) -> None:
 

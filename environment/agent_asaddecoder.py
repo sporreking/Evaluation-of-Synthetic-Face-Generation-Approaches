@@ -93,6 +93,10 @@ def _decoder_loss(
     c1 = torch.mean(torch.log(cls_model(G_minus_n) + eps))
     mse1 = torch.mean(torch.sum((G_minus_n - G(codes)) ** 2, sum_dim))
 
+    # Take resolution into account to balance MSE vs classification loss
+    lambda_mse = 1 / 5000
+    lambda_mse_res = lambda_mse * (256 / G_minus_n.shape[-1]) ** 2
+
     del G_minus_n
     torch.cuda.empty_cache()
 
@@ -100,7 +104,7 @@ def _decoder_loss(
     MSE = mse1 + torch.mean(
         torch.sum((G(codes + control_vectors) - G(codes)) ** 2, sum_dim)
     )
-    return C + MSE
+    return C + MSE * lambda_mse_res
 
 
 def _fit_decoder(
@@ -119,7 +123,7 @@ def _fit_decoder(
     val_losses = []
 
     # Create optimizers
-    opt = torch.optim.AdamW(model.parameters())
+    opt = torch.optim.Adam(model.parameters())
 
     # Setup batches
     n_batches = math.floor(config["iter_per_epoch"] / config["batch_size"])
