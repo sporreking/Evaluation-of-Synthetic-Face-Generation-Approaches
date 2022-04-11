@@ -1,18 +1,16 @@
-import abc
 from src.dataset.Dataset import Dataset
-import pandas as pd
-import numpy as np
-from typing import Any
 from src.metric.SampleMetricManager import SampleMetricManager
 from src.population.Population import Population
+import src.metric.CompoundMetricManager
+import abc
+from typing import Any
 
 
 class CompoundMetric(metaclass=abc.ABCMeta):
     def __init__(
         self,
         name: str,
-        dataset: Dataset,
-        population: Population,
+        compound_metric_manager,
         smm: SampleMetricManager = None,
     ):
         """
@@ -20,33 +18,37 @@ class CompoundMetric(metaclass=abc.ABCMeta):
 
         Args:
             name (str): Name of the metric.
-            dataset (Dataset): Dataset used to compute the metric.
-            population (Population): Population used to compute the metric.
+            cmm (CompoundMetricManager): Manager used by metrics. Population and dataset is derived
+                from this manager.
             smm (SampleMetricManager, optional): Manager used by per-sample metrics. Defaults to None.
         """
-        self._ds = dataset
-        self._pop = population
+        self._dataset = compound_metric_manager.get_dataset()
+        self._population = compound_metric_manager.get_population()
         self._name = name
         self._smm = smm
         pass
 
     def get_dataset(self) -> Dataset:
         """
-        Should return the Dataset of this compound metric.
+        Returns the dedicated dataset of this compound metric. This Dataset
+        was assigned upon the metrics's instantiation, inherited by the compound
+        metric manager.
 
         Returns:
-            str: The name of this compound metric.
+            Dataset: The dataset of this manager.
         """
-        return self._ds
+        return self._dataset
 
     def get_population(self) -> Population:
         """
-        Should return the Population of this compound metric.
+        Returns the dedicated population of this compound metric. This Population
+        was assigned upon the metrics's instantiation, inherited by the compound
+        metric manager.
 
         Returns:
-            str: The name of this compound metric.
+            Population: The population of this manager.
         """
-        return self._pop
+        return self._population
 
     def get_name(self) -> str:
         """
