@@ -1,8 +1,8 @@
 from __future__ import annotations
-import random
+
+from typing import Union
 
 from src.dataset.Dataset import Dataset
-from src.dataset.TorchImageDataset import TorchImageDataset
 import src.util.ModelUtil as ModelUtil
 from src.util.CudaUtil import to_device, get_default_device, empty_cache
 
@@ -19,10 +19,10 @@ DATA_TRAINING_SPLIT = 0.8
 
 #! Training Constants
 BATCH_SIZE = 28  # Changing batch-size requires retraining from scratch
-NUM_EPOCHS = 100
+NUM_EPOCHS = 1000
 NUM_RAD_TRAIN_BATCHES_PER_VALIDATION = 10
-NUM_BATCHES_PER_VALIDATION = 500  # The last batches are for radius training
-NUM_VALIDATIONS_PER_LR = 150
+NUM_BATCHES_PER_VALIDATION = 2000 * 1  # The last batches are for radius training
+NUM_VALIDATIONS_PER_LR = 20
 
 #! Model Constants
 PARAM_RADIUS = "radius"
@@ -34,19 +34,21 @@ MODEL_PARAM_NU = 0.01
 DS_PROJ_FILE_PREFIX = "ee_proj"
 DS_PROJ_BATCH_SIZE = 25
 
+#! Inception Constants
+INCEPTION_OUTPUT_DIM = 2048
+INCEPTION_PROJ_FILE_PREFIX = "inception_proj"
+
 #! Network
 class DeepSVDDNet(torch.nn.Module):
     """
     Represents a Deep SVDD neural network.
     """
 
-    INCEPTION_OUTPUT_DIM = 2048
-
     def __init__(
         self,
         num_hidden_layers: int = 2,
-        num_nodes_per_hidden_layer: int = 512,
-        num_output_nodes: int = 128,
+        num_nodes_per_hidden_layer: int = 128,
+        num_output_nodes: int = 32,
     ):
         """
         Constructs a new Deep SVDD network. The network consist of several hidden layers
@@ -86,9 +88,10 @@ class DeepSVDDNet(torch.nn.Module):
         # DeepSVDDNetwork
         self.net = torch.nn.Sequential(
             torch.nn.Linear(
-                self.INCEPTION_OUTPUT_DIM, num_nodes_per_hidden_layer, bias=False
+                INCEPTION_OUTPUT_DIM, num_nodes_per_hidden_layer, bias=False
             ),
             torch.nn.ReLU(inplace=True),
+            # torch.nn.Dropout(),
             *(
                 torch.nn.Sequential(
                     torch.nn.Linear(
@@ -97,8 +100,9 @@ class DeepSVDDNet(torch.nn.Module):
                         bias=False,
                     ),
                     torch.nn.ReLU(inplace=True),
+                    # torch.nn.Dropout(),
                 )
-                for _ in range(num_hidden_layers)
+                for _ in range(num_hidden_layers - 1)
             ),
             torch.nn.Linear(num_nodes_per_hidden_layer, num_output_nodes, bias=False),
         )
@@ -106,7 +110,7 @@ class DeepSVDDNet(torch.nn.Module):
         # Radius parameter
         self.register_parameter(
             name=PARAM_RADIUS,
-            param=torch.nn.Parameter(torch.ones(1), requires_grad=True),
+            param=torch.nn.Parameter(torch.tensor(0.5), requires_grad=True),
         )
 
         # Center parameter
@@ -167,6 +171,20 @@ def soft_boundary_loss_func(
     )
 
 
+#! Inception
+
+
+class InceptionDataset(torch.utils.data.Dataset):
+    def __init__(self, data: np.ndarray):
+        self._data = data
+
+    def __len__(self):
+        return self._data.shape[0]
+
+    def __getitem__(self, idx):
+        return torch.from_numpy(self._data[idx, :]).float()
+
+
 def get_inception_model() -> torchvision.models.inception.Inception3:
     """
     Creates a new inception v3 model instance and returns it.
@@ -176,10 +194,12 @@ def get_inception_model() -> torchvision.models.inception.Inception3:
         torchvision.models.inception.Inception3: The new inception v3 instance.
     """
 
-    m = torchvision.models.inception.inception_v3(pretrained=True, aux_logits=False)
+    m = torchvision.models.inception.inception_v3(
+        pretrained=True, aux_logits=False, transform_input=False
+    )
     m.fc = torch.nn.Flatten()
 
-    return m
+    return m.eval()
 
 
 def get_inception_image_transform():
@@ -190,7 +210,99 @@ def get_inception_image_transform():
     Returns:
         Transform: A composite transform for inception v3 pre-processing.
     """
-    return T.Compose([T.Resize(299), T.CenterCrop(299), T.ToTensor()])
+    return T.Compose(
+        [
+            T.Resize(299),
+            T.CenterCrop(299),
+            T.ToTensor(),
+            # T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ]
+    )
+
+
+def _inception_proj_file_name(dataset: Dataset) -> str:
+    return f"{INCEPTION_PROJ_FILE_PREFIX}_{dataset.get_name(dataset.get_resolution())}"
+
+
+def get_inception_dataset(
+    dataset: Dataset,
+    data_split: float = 1.0,
+) -> Union[InceptionDataset, tuple[InceptionDataset, InceptionDataset]]:
+
+    # Load inceptified data
+    data = ModelUtil.get_file_jar().get_file(
+        f"{_inception_proj_file_name(dataset)}.npy",
+        np.load,
+    )
+
+    # Sanity check
+    if data is None:
+        raise RuntimeError(
+            f"Dataset '{dataset.get_name(dataset.get_resolution())}' "
+            + "has not been inceptified!"
+        )
+
+    # Check if data should be split
+    if data_split >= 1.0:
+        return InceptionDataset(data)
+
+    # Split into training / validation datasets
+    np.random.seed(DATA_SEED)
+    np.random.shuffle(data)
+    n_train = int(np.floor(data.shape[0] * data_split))
+
+    ds_train = InceptionDataset(data[:n_train, :])
+    ds_valid = InceptionDataset(data[n_train:, :])
+
+    # Return inception datasets
+    return ds_train, ds_valid
+
+
+def is_inceptified(dataset: Dataset):
+    return (
+        ModelUtil.get_file_jar().get_file(
+            f"{_inception_proj_file_name(dataset)}.npy",
+            np.load,
+        )
+        is not None
+    )
+
+
+def inceptify(dataset: Dataset, device: torch.cuda.device) -> None:
+
+    tqdm.write(
+        f"Inceptifying dataset '{dataset.get_name(dataset.get_resolution())}'..."
+    )
+
+    # Create torch image dataset
+    ds_im = dataset.to_torch_dataset(get_inception_image_transform(), use_labels=False)
+    loader = torch.utils.data.DataLoader(
+        ds_im, batch_size=BATCH_SIZE, shuffle=False, num_workers=2
+    )
+
+    # Get inception model
+    inception = to_device(get_inception_model(), device)
+
+    # Inceptify data
+    projections = np.zeros((len(dataset), INCEPTION_OUTPUT_DIM))
+    for i, data in tqdm(
+        enumerate(loader),
+        total=len(loader),
+        desc="Transforming with inception model",
+    ):
+        projections[(i * BATCH_SIZE) : ((i + 1) * BATCH_SIZE), :] = (
+            inception(to_device(data, device)).cpu().detach().numpy()
+        )
+
+    # Save inceptified data
+    ModelUtil.get_file_jar().store_file(
+        _inception_proj_file_name(dataset),
+        lambda p: np.save(p, projections),
+    )
+
+    # Inform CLI
+    tqdm.write(f"Done! Inceptified data saved to disk.")
 
 
 #! Training
@@ -200,7 +312,6 @@ def _train_validate(
     epoch: int,
     batch: int,
     net: DeepSVDDNet,
-    inception: torchvision.models.inception.Inception3,
     loader_train: torch.utils.data.DataLoader,
     loader_valid: torch.utils.data.DataLoader,
     train_loss: float,
@@ -218,8 +329,8 @@ def _train_validate(
     # Start evaluation of validation data
     with torch.no_grad():
         for data in tqdm(loader_valid, position=2, desc="Validation", leave=False):
-            # Send batch to GPU and perform inception model pass
-            data = inception(to_device(data, device))
+            # Send batch to GPU
+            data = to_device(data, device)
 
             # Increment number processed of batches
             num_validation_batches += 1
@@ -267,7 +378,6 @@ def _train_epoch(
     epoch: int,
     start_batch: int,
     net: DeepSVDDNet,
-    inception: torchvision.models.inception.Inception3,
     loader_train: torch.utils.data.DataLoader,
     loader_valid: torch.utils.data.DataLoader,
     net_optimizer: torch.optim.AdamW,
@@ -296,8 +406,8 @@ def _train_epoch(
         ):
             continue
 
-        # Send batch to GPU and perform inception model pass
-        data = inception(to_device(data, device))
+        # Send batch to GPU
+        data = to_device(data, device)
 
         # Pick optimizer based on current batch
         train_net = (
@@ -355,7 +465,6 @@ def _train_epoch(
                 epoch,
                 i + 1,
                 net,
-                inception,
                 loader_train,
                 loader_valid,
                 loss.item(),
@@ -364,6 +473,34 @@ def _train_epoch(
 
             # Update schedule
             scheduler.step()
+
+
+def _calc_center(net: DeepSVDDNet, loader, device, num_training_samples: int) -> None:
+    # Perform initial forward pass
+    tqdm.write("Determining center parameter...")
+    projections = np.zeros((num_training_samples, net.num_output_nodes))
+    for i, data in tqdm(
+        enumerate(loader),
+        total=len(loader),
+        desc="Initial forward pass",
+    ):
+        projections[(i * BATCH_SIZE) : ((i + 1) * BATCH_SIZE), :] = (
+            net(to_device(data, device)).cpu().detach().numpy()
+        )
+        break
+
+    # Derive center parameter
+    center = (
+        np.ones(net.num_output_nodes) * 10
+    )  # projections[0, :]  # np.mean(projections, axis=0)
+
+    # Send to GPU
+    net.get_parameter(PARAM_CENTER).data = to_device(torch.tensor(center), device)
+
+    # Inform CLI
+    tqdm.write(
+        f"Done! Center (mean, std) = ({np.mean(center):.6f}, {np.std(center):.6f})"
+    )
 
 
 def train(dataset: Dataset, start_state: ModelUtil.AuxModelInfo = None) -> None:
@@ -384,27 +521,16 @@ def train(dataset: Dataset, start_state: ModelUtil.AuxModelInfo = None) -> None:
     # Load device
     device = get_default_device()
 
-    # Split into training / validation
-    uri_list = dataset.get_image_paths()
-    random.seed(DATA_SEED)
-    random.shuffle(uri_list)
-
-    n = len(uri_list)
-    n_train = int(np.floor(n * DATA_TRAINING_SPLIT))
-
-    uri_train = uri_list[:n_train]
-    uri_valid = uri_list[n_train:]
-
-    # Create transform
-    transform = get_inception_image_transform()
+    # Inceptify
+    if not is_inceptified(dataset):
+        inceptify(dataset, device)
 
     # Create datasets
-    ds_train = TorchImageDataset(uri_train, transform)
-    ds_valid = TorchImageDataset(uri_valid, transform)
+    ds_train, ds_valid = get_inception_dataset(dataset, DATA_TRAINING_SPLIT)
 
     # Create dataset loaders
     loader_train = torch.utils.data.DataLoader(
-        ds_train, batch_size=BATCH_SIZE, shuffle=False, num_workers=2
+        ds_train, batch_size=BATCH_SIZE, shuffle=True, num_workers=2
     )
 
     loader_valid = torch.utils.data.DataLoader(
@@ -425,13 +551,13 @@ def train(dataset: Dataset, start_state: ModelUtil.AuxModelInfo = None) -> None:
     net_optimizer = torch.optim.AdamW(
         net.net.parameters(),
         weight_decay=0.01,
-        lr=0.0001,
+        # lr=0.0001,
     )
 
     rad_optimizer = torch.optim.LBFGS(
-        [net.get_parameter(PARAM_RADIUS)],
-        line_search_fn="strong_wolfe",
+        [net.get_parameter(PARAM_RADIUS)], line_search_fn="strong_wolfe", max_iter=100
     )
+    # rad_optimizer = net_optimizer
 
     # Add function for resetting optimizer
     rad_optimizer_start_state = rad_optimizer.state_dict()
@@ -449,37 +575,9 @@ def train(dataset: Dataset, start_state: ModelUtil.AuxModelInfo = None) -> None:
         (start_state.epoch - 1) * len(loader_train) if start_state is not None else 0
     )
 
-    # Load inception model
-    inception = to_device(get_inception_model(), device)
-
     # Derive center parameter if applicable
     if start_state is None:
-
-        # Perform initial forward pass
-        tqdm.write("Determining center parameter...")
-        projs = np.zeros((n_train, net.num_output_nodes))
-        for i, data in tqdm(
-            enumerate(loader_train),
-            total=len(loader_train),
-            desc="Initial forward pass",
-        ):
-            projs[(i * BATCH_SIZE) : ((i + 1) * BATCH_SIZE), :] = (
-                net(inception(to_device(data, device))).cpu().detach().numpy()
-            )
-
-        # Derive center parameter
-        center = np.mean(projs, axis=0)
-
-        # Send to GPU
-        net.get_parameter(PARAM_CENTER).data = to_device(torch.tensor(center), device)
-
-        # Inform CLI
-        tqdm.write(
-            f"Done! Center (mean, std) = ({np.mean(center):.6f}, {np.std(center):.6f})"
-        )
-
-        # Clear from stack
-        del projs, center
+        _calc_center(net, loader_train, device, len(ds_train))
 
     # Start training
     for epoch in tqdm(range(NUM_EPOCHS), position=0, desc="Epoch"):
@@ -493,7 +591,6 @@ def train(dataset: Dataset, start_state: ModelUtil.AuxModelInfo = None) -> None:
             epoch + 1,
             start_state.batch if start_state is not None else -1,
             net,
-            inception,
             loader_train,
             loader_valid,
             net_optimizer,
@@ -545,25 +642,20 @@ def project(dataset: Dataset) -> np.ndarray:
     ee = to_device(get(), device)
 
     # Load dataset images
-    real_images = dataset.to_torch_dataset(
-        get_inception_image_transform(), use_labels=False
-    )
+    ds = get_inception_dataset(dataset)
 
     # Create dataset loader
-    real_loader = torch.utils.data.DataLoader(
-        real_images, batch_size=DS_PROJ_BATCH_SIZE, shuffle=False, num_workers=2
+    loader = torch.utils.data.DataLoader(
+        ds, batch_size=DS_PROJ_BATCH_SIZE, shuffle=False, num_workers=2
     )
-
-    # Load inception model
-    inception = to_device(get_inception_model(), device)
 
     # Project images
     projections = np.zeros((len(dataset), ee.num_output_nodes))
     for i, images in tqdm(
-        enumerate(real_loader), total=len(real_loader), desc="Projecting dataset"
+        enumerate(loader), total=len(loader), desc="Projecting dataset"
     ):
         projections[i * DS_PROJ_BATCH_SIZE : ((i + 1) * DS_PROJ_BATCH_SIZE), :] = (
-            ee(inception(to_device(images, device))).cpu().detach().numpy()
+            ee(to_device(images, device)).cpu().detach().numpy()
         )
 
     # Save projections

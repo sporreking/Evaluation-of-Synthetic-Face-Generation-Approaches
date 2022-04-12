@@ -113,12 +113,13 @@ class AlphaPrecisionSampleMetricDescription(SampleMetricDescription):
 
         # Compute output
         output = np.zeros(data.shape[0])
+        outputv = np.zeros(data.shape[0])
         for i, image in tqdm(
             enumerate(pop_loader), total=len(pop_loader), desc="Computing metrics"
         ):
-            data = inception(to_device(image, device))
+            image = inception(to_device(image, device))
 
-            X_g_tilde = ee(data)
+            X_g_tilde = ee(image)
 
             dists_from_center = (
                 torch.linalg.norm(X_g_tilde - ee.get_parameter(EE.PARAM_CENTER), axis=1)
@@ -130,5 +131,22 @@ class AlphaPrecisionSampleMetricDescription(SampleMetricDescription):
             output[(i * CALC_BATCH_SIZE) : ((i + 1) * CALC_BATCH_SIZE)] = (
                 dists_from_center <= r_alpha_hat
             ).astype(int)
+            outputv[
+                (i * CALC_BATCH_SIZE) : ((i + 1) * CALC_BATCH_SIZE)
+            ] = dists_from_center
+
+        from PIL import Image
+        import matplotlib.pyplot as plt
+
+        print(np.sum(output))
+
+        def disp_im(i: int):
+            m = Image.open(data.iloc[i, 2])
+            plt.imshow(np.asarray(m))
+            plt.title(f"Index: {i} | Dist: {outputv[i]:.6f}")
+            plt.show()
+
+        for i in np.argsort(outputv)[::-1]:
+            disp_im(i)
 
         return output
