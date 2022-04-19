@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm
 import math
-from src.util.ModelUtil import AuxModelInfo, save_aux, load_aux_best
+from src.util.AuxUtil import AuxModelInfo, save_aux, load_aux_best
 from copy import deepcopy
 from src.environment.EnvironmentManager import EnvironmentManager as em
 from src.controller.ASADControllerModels import get_dec_arch, get_cls_arch

@@ -17,7 +17,7 @@ from src.controller.ASADControllerModels import (
     get_cls_arch,
 )
 
-from src.util.ModelUtil import AuxModelInfo, save_aux, load_aux_best
+from src.util.AuxUtil import AuxModelInfo, save_aux, load_aux_best
 from src.generator.Generator import Generator
 
 
