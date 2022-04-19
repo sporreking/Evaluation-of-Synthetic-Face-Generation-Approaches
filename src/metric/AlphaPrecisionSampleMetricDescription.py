@@ -9,7 +9,7 @@ from src.dataset.TorchImageDataset import TorchImageDataset
 from src.metric.SampleMetricDescription import SampleMetricDescription
 import src.metric.EvaluationEmbedding as EE
 from src.util.CudaUtil import get_default_device, to_device
-import src.util.ModelUtil as ModelUtil
+import src.util.AuxUtil as AuxUtil
 
 import torch
 import torchvision.transforms as T
@@ -47,7 +47,7 @@ class AlphaPrecisionSampleMetricDescription(SampleMetricDescription):
             # Train network
             info = None
             if mode == SETUP_MODE_CONTINUE:
-                info = ModelUtil.load_aux_best(EE.AUX_MODEL_NAME)
+                info = AuxUtil.load_aux_best(EE.AUX_MODEL_NAME)
                 print(f"Starting from (epoch, batch) = ({info.epoch}, {info.batch})")
             EE.train(dataset, info)
 
@@ -58,7 +58,7 @@ class AlphaPrecisionSampleMetricDescription(SampleMetricDescription):
     def is_ready(dataset: Dataset) -> bool:
         return (
             EE.get() is not None
-            and ModelUtil.get_file_jar().get_file(
+            and AuxUtil.get_file_jar().get_file(
                 AlphaPrecisionSampleMetricDescription._ds_proj_file_name(dataset),
                 np.load,
             )

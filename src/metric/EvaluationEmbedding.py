@@ -2,7 +2,7 @@ import random
 
 from src.dataset.Dataset import Dataset
 from src.dataset.TorchImageDataset import TorchImageDataset
-import src.util.ModelUtil as ModelUtil
+import src.util.AuxUtil as AuxUtil
 from src.util.CudaUtil import to_device, get_default_device, empty_cache
 
 from tqdm import tqdm
@@ -154,9 +154,9 @@ def _train_validate(
     )
 
     # Save results to disk
-    ModelUtil.save_aux(
+    AuxUtil.save_aux(
         AUX_MODEL_NAME,
-        ModelUtil.AuxModelInfo(
+        AuxUtil.AuxModelInfo(
             net.state_dict(),
             epoch,
             batch,
@@ -266,11 +266,11 @@ def _train_epoch(
             scheduler.step()
 
 
-def train(dataset: Dataset, start_state: ModelUtil.AuxModelInfo = None) -> None:
+def train(dataset: Dataset, start_state: AuxUtil.AuxModelInfo = None) -> None:
     """
     Trains the evaluation embedding model and saves it to disk for
     different points along the training. The model is saved as an
-    auxiliary model using `util.ModelUtil`, under the name given
+    auxiliary model using `util.AuxUtil`, under the name given
     by the `metric.EvaluationEmbedding.AUX_MODEL_NAME` constant.
 
     Args:
@@ -436,7 +436,7 @@ def project(dataset: Dataset) -> np.ndarray:
     """
 
     # Sanity check
-    if ModelUtil.load_aux_best(AUX_MODEL_NAME) is None:
+    if AuxUtil.load_aux_best(AUX_MODEL_NAME) is None:
         raise ValueError("Cannot project before training!")
 
     # Load device
@@ -470,7 +470,7 @@ def project(dataset: Dataset) -> np.ndarray:
         )
 
     # Save projections
-    ModelUtil.get_file_jar().store_file(
+    AuxUtil.get_file_jar().store_file(
         _ds_proj_file_name(dataset),
         lambda p: np.save(p, projections),
     )
@@ -493,7 +493,7 @@ def get_projections(dataset: Dataset) -> np.ndarray:
             Note that if the projections have not yet been performed (with
             `project(dataset)`) the function will return `None`.
     """
-    return ModelUtil.get_file_jar().get_file(
+    return AuxUtil.get_file_jar().get_file(
         f"{_ds_proj_file_name(dataset)}.npy",
         np.load,
     )
@@ -514,7 +514,7 @@ def get() -> DeepSVDDNet:
     """
 
     # Try to load model
-    model_info = ModelUtil.load_aux_best(AUX_MODEL_NAME)
+    model_info = AuxUtil.load_aux_best(AUX_MODEL_NAME)
     if model_info is not None:
 
         # Create network
