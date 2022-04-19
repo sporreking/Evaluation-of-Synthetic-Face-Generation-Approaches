@@ -148,6 +148,20 @@ def _load_aux_with_full_name(
     )
 
 
+def delete_aux(name: str) -> None:
+    """
+    Deletes all saved instances of the specified auxiliary model from the disk.
+
+    Args:
+        name (str): The name of the auxiliary model to delete.
+    """
+    for p in _file_jar.iterdir():
+        if (
+            _is_epoch_batch_format(p.name) and "_".join(p.name.split("_")[:-2]) == name
+        ) or p.name == _best_name(name):
+            p.unlink(missing_ok=True)
+
+
 def save_aux(
     name: str,
     info: AuxModelInfo,
