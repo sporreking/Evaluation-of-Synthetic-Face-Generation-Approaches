@@ -97,11 +97,21 @@ class Controller(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def generate_native(self, native_input: np.ndarray) -> List[str]:
+    def generate_native(
+        self, latent_codes: np.ndarray, native_input: np.ndarray
+    ) -> List[str]:
         """
-        Should call the generate images and applies manipulations according to `native_input`.
+        Should manipulate `latent_codes` according to `native_input` and then generate the manipulated images
+        given the manipulated latent codes. Generation should be done by calling the associated Generator.
 
         Args:
+            latent_codes (np.ndarray): Latent codes to be manipulated according to `native_input` and
+                then generated. Axis 0 in `latent_codes` corresponds to the number of images to be
+                generated and should coincide length-wise with Axis 0 in `native_input`. For example:
+
+                `latent_codes[0,:]` is latent code z0 and `native_input[0,:]` then defines the desired
+                manipulations to that latent code.
+
             native_input (np.ndarray[dict[str, Any]]): 2D array containing dictionary with
                 parameter names and their native values. Axis 0 corresponds to the number
                 of images to generate/manipulate, while axis 1 denotes different sequential
