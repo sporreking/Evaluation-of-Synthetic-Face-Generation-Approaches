@@ -1,5 +1,6 @@
 from src.generator.UNetGANGenerator import UNETGAN_NAME
 from src.controller.ASADController import ASADController, ASAD_NAME
+from src.controller.IdentityController import IdentityController, IDENTITY_NAME
 from src.controller.Controller import Controller
 from typing import List, Tuple
 from src.core.Registry import Registry
@@ -15,7 +16,10 @@ class ControllerRegistry(Registry):
     storage (`_CONTROLLERS`) of this class.
     """
 
-    _CONTROLLERS = {ASAD_NAME: {UNETGAN_NAME: ASADController}}
+    _CONTROLLERS = {
+        ASAD_NAME: {UNETGAN_NAME: ASADController},
+        IDENTITY_NAME: {UNETGAN_NAME: IdentityController},
+    }
 
     @staticmethod
     def get_names() -> List[Tuple[str]]:
