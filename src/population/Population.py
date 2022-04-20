@@ -73,6 +73,66 @@ class Population:
         """
         return self._data.shape[0]
 
+    def _move_images(
+        self, uris: list[str], start_id: int, append: bool
+    ) -> tuple[list[int], list[str]]:
+        """Move image to population directory."""
+
+        new_ids = []
+        new_uris = []
+        for uri in uris:
+
+            # Derive source path
+            source = Path(uri)
+
+            # Check if source file exists
+            if not source.exists():
+                raise FileNotFoundError(f"Could not find file: '{source.absolute()}'")
+
+            # Check if source file lies in population directory
+            if source.parent == self._file_jar.get_root_dir():
+                if source.stem.isdigit():
+                    if int(source.stem) in self._data.index:
+                        # Check if image-to-be-moved is already part of population
+                        raise ValueError(
+                            f"Cannot add/move image '{source.absolute()}' to population! "
+                            + "The image is already used by another sample in the population."
+                        )
+                    else:
+                        # Derive ID from file name
+                        new_ids.append(int(source.stem))
+                        new_uris.append(str(source))
+                        continue
+
+            # Derive destination path
+            id = start_id
+            dest = None
+            while True:
+                dest = self._file_jar.get_root_dir() / f"{id}{source.suffix}"
+                if dest.exists():
+                    if str(dest) in uris:
+                        # The ID is occupied
+                        id += 1
+                    elif append:
+                        # There is a blocking file
+                        raise ValueError(
+                            f"File '{dest.absolute()}' already exists! "
+                            + "If existing files should be replaced, set 'append' to False."
+                        )
+                    else:
+                        # The file should be replaced
+                        break
+                else:
+                    # There is no obstruction
+                    break
+            start_id = id + 1
+
+            # Move files and update IDs / URIs
+            new_ids.append(id)
+            new_uris.append(str(source.replace(dest)))
+
+        return new_ids, new_uris
+
     def add_all(
         self,
         latent_codes: np.ndarray,
@@ -86,6 +146,24 @@ class Population:
         """
         Adds new samples to this population. Note that the dimensions of all parameters
         must match.
+
+        If `save_to_disk=True`, all images specified by `uris` will be moved to this population's
+        root directory before being stored. The files will be named after their IDs, e.g.,
+        "0.png", "1.png", etc. Note that if later calls are made to either `add_all()` or `add()`,
+        files that were added earlier will not be moved. It is therefore recommended to always use
+        `save_to_disk=True`.
+
+        If a referenced file is already in the population directory, this function will first
+        try to derive an ID from its file name to associate the sample with, but if this is not
+        possible the population will generate a new ID for it and move it as usual. If a file
+        is named according to an ID, but if it's already in use by another sample, an exception
+        will be raised.
+
+        When an unoccupied ID has been decided upon for a new sample, but there is still an
+        obstructing file with the same name in the population directory, the file will be
+        replaced if `append=False`. If `append=True`, an exception will be raised instead. This
+        scenario should only occur if there is "junk" in the population directory, i.e., if there
+        are old samples that should be replaced (`append=False`). Otherwise, something is wrong.
 
         Args:
             latent_codes (np.ndarray): The latent codes used for generating the samples.
@@ -101,7 +179,8 @@ class Population:
                 existing population. Otherwise, all current samples will be replaced.
                 Defaults to True.
             save_to_disk (bool, optional): If `True`, the population will be saved to
-                disk when the samples have been added. Defaults to True.
+                disk when the samples have been added, and the files referenced by `uris`
+                will be moved to the population directory. Defaults to True.
             **attributes (np.ndarray): The attributes used for manipulating `latent_seeds`
                 into `latent_codes`. If the samples being added are the first ones of this
                 population, these will define what attributes are available, i.e., if
@@ -110,6 +189,12 @@ class Population:
         Raises:
             ValueError: If the dimensions of the input do no match, or if an invalid
                 attribute was provided.
+            FileNotFoundError: If any file referenced by `uris` does not exist.
+            ValueError: If any file referenced by `uris` is named according to an ID,
+                but if it's already in use by another sample.
+            ValueError: If `append=True` but there is an obstructing file in the population
+                directory which is not in use by any sample. This on-disk scenario should
+                only occur if there are old samples that should be replaced (`append=False`).
         """
 
         # Sanity check (dimensions)
@@ -132,6 +217,14 @@ class Population:
                     f"Invalid attribute '{a}'. Must be one of: {self.get_attributes()}"
                 )
 
+        # Move images if applicable
+        start_index = np.max(self._data.index) + 1 if len(self._data) > 0 else 0
+        ids = None
+        if save_to_disk:
+            ids, uris = self._move_images(uris, start_index, append)
+        else:
+            ids, uris = range(start_index, start_index + len(uris)), uris
+
         # Add all new samples
         self._data = pd.concat(
             [
@@ -147,10 +240,11 @@ class Population:
                         "uri": uris,
                         "filter_bitmap": filter_bitmaps,
                         **attributes,
-                    }
+                    },
+                    index=ids,
                 ),
             ],
-            ignore_index=True,
+            ignore_index=False,
             axis=0,
         )
 
@@ -171,6 +265,24 @@ class Population:
         """
         Adds a new sample to this population.
 
+        If `save_to_disk=True`, the image specified by `uri` will be moved to this population's
+        root directory before being stored. The file will be named according to its IDs, e.g.,
+        "0.png", "1.png", etc. Note that if later calls are made to either `add_all()` or `add()`,
+        files that were added earlier will not be moved. It is therefore recommended to always use
+        `save_to_disk=True`.
+
+        If the referenced file is already in the population directory, this function will first
+        try to derive an ID from its file name to associate the sample with, but if this is not
+        possible the population will generate a new ID for it and move it as usual. If the file
+        is named according to an ID, but if it's already in use by another sample, an exception
+        will be raised.
+
+        When an unoccupied ID has been decided upon for the new sample, but there is still an
+        obstructing file with the same name in the population directory, the file will be
+        replaced if `append=False`. If `append=True`, an exception will be raised instead. This
+        scenario should only occur if there is "junk" in the population directory, i.e., if there
+        are old samples that should be replaced (`append=False`). Otherwise, something is wrong.
+
         Args:
             latent_code (np.ndarray): The latent code used for generating this sample.
             latent_seed (np.ndarray): The latent code before it was manipulated with
@@ -183,7 +295,8 @@ class Population:
                 existing population. Otherwise, all current samples will be replaced.
                     Defaults to True.
             save_to_disk (bool, optional): If `True`, the population will be saved to
-                disk when the sample has been added. Defaults to True.
+                disk when the sample has been added, and the file referenced by `uri`
+                will be moved to the population directory. Defaults to True.
             **attributes (float): The attributes used for manipulating `latent_seed`
                 into `latent_code`. If the sample being added is the first one of this
                 population, these will define what attributes are available, i.e., if
@@ -191,7 +304,17 @@ class Population:
 
         Raises:
             ValueError: If an invalid attribute was provided.
+            FileNotFoundError: If the file referenced by `uri` does not exist.
+            ValueError: If the file referenced by `uri` is named according to an ID,
+                but if it's already in use by another sample.
+            ValueError: If `append=True` but there is an obstructing file in the population
+                directory which is not in use by any sample. This on-disk scenario should
+                only occur if there are old samples that should be replaced (`append=False`).
         """
+
+        # Create DataFrame if non-existent
+        if self._data is None or not append:
+            self._create_dataframe(attributes.keys())
 
         # Sanity check (attributes)
         for a in attributes.keys():
@@ -200,9 +323,13 @@ class Population:
                     f"Invalid attribute '{a}'. Must be one of: {self.get_attributes()}"
                 )
 
-        # Create DataFrame if non-existent
-        if self._data is None or not append:
-            self._create_dataframe(attributes.keys())
+        # Move image if applicable
+        start_index = np.max(self._data.index) + 1 if len(self._data) > 0 else 0
+        ids, uris = None, None
+        if save_to_disk:
+            ids, uris = self._move_images([uri], start_index, append)
+        else:
+            ids, uris = [start_index], [uri]
 
         # Add new sample
         self._data = pd.concat(
@@ -212,13 +339,14 @@ class Population:
                     {
                         "latent_code": [latent_code],
                         "latent_seed": [latent_seed],
-                        "uri": [uri],
+                        "uri": uris,
                         "filter_bitmap": [filter_bitmap],
                         **{k: [v] for k, v in attributes.items()},
-                    }
+                    },
+                    index=ids,
                 ),
             ],
-            ignore_index=True,
+            ignore_index=False,
             axis=0,
         )
 
