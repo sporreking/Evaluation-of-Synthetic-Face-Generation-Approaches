@@ -7,7 +7,7 @@ DS: Dataset = DatasetRegistry.get_resources()[0]()
 print(f"Using dataset: {DS.get_name(DS.get_resolution())}")
 
 # Load population
-POP = Population("test2")
+POP = Population("test")
 print(f"Using population: {POP.get_name()}")
 
 import src.metric.EvaluationEmbedding as EE
@@ -18,10 +18,10 @@ from src.metric.AlphaPrecisionSampleMetricDescription import (
 )
 
 # Inception model
-device = get_default_device()
+# device = get_default_device()
 
 # Model
-model = to_device(EE.DeepSVDDNet(), device)
+# model = to_device(EE.DeepSVDDNet(), device)
 
 # Sample metric manager
 from src.metric.SampleMetricManager import SampleMetricManager
@@ -29,16 +29,16 @@ from src.metric.SampleMetricManager import SampleMetricManager
 smm = SampleMetricManager([AlphaPrecisionSMD], POP, DS)
 
 # Torch dataset
-TDS = DS.to_torch_dataset(EE.get_inception_image_transform(), use_labels=False)
-loader = torch.utils.data.DataLoader(TDS, batch_size=2, shuffle=False, num_workers=2)
+# TDS = DS.to_torch_dataset(EE.get_inception_image_transform(), use_labels=False)
+# loader = torch.utils.data.DataLoader(TDS, batch_size=2, shuffle=False, num_workers=2)
 
 c = input("Run inception model, setup, project, or calc?(i,s,p,c)")
 if c == "i":
-    b = to_device(next(iter(loader)), device)
+    """b = to_device(next(iter(loader)), device)
     print(b.shape)
     r = model.inception(b)
     print(r)
-    print(r.shape)
+    print(r.shape)"""
 elif c == "s":
     AlphaPrecisionSMD.setup(DS, "continue")
 elif c == "p":

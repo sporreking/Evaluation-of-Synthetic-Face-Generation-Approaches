@@ -20,8 +20,8 @@ DATA_TRAINING_SPLIT = 0.8
 #! Training Constants
 BATCH_SIZE = 28  # Changing batch-size requires retraining from scratch
 NUM_EPOCHS = 1000
-NUM_RAD_TRAIN_BATCHES_PER_VALIDATION = 10
-NUM_BATCHES_PER_VALIDATION = 2000 * 1  # The last batches are for radius training
+NUM_RAD_TRAIN_BATCHES_PER_VALIDATION = 2000
+NUM_BATCHES_PER_VALIDATION = 2000 * 3  # The last batches are for radius training
 NUM_VALIDATIONS_PER_LR = 20
 
 #! Model Constants
@@ -35,7 +35,7 @@ DS_PROJ_FILE_PREFIX = "ee_proj"
 DS_PROJ_BATCH_SIZE = 25
 
 #! Inception Constants
-INCEPTION_OUTPUT_DIM = 2048
+INCEPTION_OUTPUT_DIM = 2048 * 2 * 2
 INCEPTION_PROJ_FILE_PREFIX = "inception_proj"
 
 #! Network
@@ -46,9 +46,9 @@ class DeepSVDDNet(torch.nn.Module):
 
     def __init__(
         self,
-        num_hidden_layers: int = 2,
-        num_nodes_per_hidden_layer: int = 128,
-        num_output_nodes: int = 32,
+        num_hidden_layers: int = 3,
+        num_nodes_per_hidden_layer: int = 2048,
+        num_output_nodes: int = 512,
     ):
         """
         Constructs a new Deep SVDD network. The network consist of several hidden layers
@@ -197,7 +197,11 @@ def get_inception_model() -> torchvision.models.inception.Inception3:
     m = torchvision.models.inception.inception_v3(
         pretrained=True, aux_logits=False, transform_input=False
     )
-    m.fc = torch.nn.Flatten()
+    m = torch.nn.Sequential(
+        *list(m.children())[:-3],
+        torch.nn.AdaptiveAvgPool2d(output_size=(2, 2)),
+        torch.nn.Flatten(),
+    )
 
     return m.eval()
 
@@ -215,8 +219,8 @@ def get_inception_image_transform():
             T.Resize(299),
             T.CenterCrop(299),
             T.ToTensor(),
-            # T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            # T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ]
     )
 
@@ -370,8 +374,19 @@ def _train_validate(
     )
 
 
+def _set_parameter(net: torch.nn.Module, name: str, val):
+    sd = net.state_dict()
+    sd[name] = val
+    net.load_state_dict(sd)
+
+
 # Used for keeping track of the full number of processed batches
 _batch_iterator = 0
+
+
+_radii = np.zeros(NUM_RAD_TRAIN_BATCHES_PER_VALIDATION)
+_counter_radii = 0
+_rad_optimizer = None
 
 
 def _train_epoch(
@@ -381,12 +396,12 @@ def _train_epoch(
     loader_train: torch.utils.data.DataLoader,
     loader_valid: torch.utils.data.DataLoader,
     net_optimizer: torch.optim.AdamW,
-    rad_optimizer: torch.optim.LBFGS,
+    rad_optimizerss: torch.optim.LBFGS,
     scheduler: torch.optim.lr_scheduler.StepLR,
     device: torch.device,
 ) -> None:
     """Train for a single epoch."""
-    global _batch_iterator
+    global _batch_iterator, _radii, _counter_radii, _rad_optimizer
 
     # Iterate through batches
     for i, data in tqdm(
@@ -414,7 +429,7 @@ def _train_epoch(
             _batch_iterator % NUM_BATCHES_PER_VALIDATION
             < NUM_BATCHES_PER_VALIDATION - NUM_RAD_TRAIN_BATCHES_PER_VALIDATION
         )
-        optimizer = net_optimizer if train_net else rad_optimizer
+        optimizer = net_optimizer if train_net else _rad_optimizer
 
         def closure(retain_graph: bool = False):
             """Calculates loss and gradients."""
@@ -442,8 +457,24 @@ def _train_epoch(
             loss = closure()
             optimizer.step()
         else:
+            # TODO: TEMP
+            if _rad_optimizer is None:
+                _rad_optimizer = _new_rad_optimizer(net)
+                optimizer = _rad_optimizer
+                _train_validate(
+                    epoch,
+                    i + 1,
+                    net,
+                    loader_train,
+                    loader_valid,
+                    0,
+                    device,
+                )
+
             # Save old radius
             prev_rad = net.get_parameter(PARAM_RADIUS).item()
+
+            # optimizer.reset_state()
 
             # Optimize
             optimizer.step(lambda: closure(True))
@@ -452,14 +483,32 @@ def _train_epoch(
             # Reset optimizer if loss is NaN
             if loss.item() != loss.item():
                 optimizer.reset_state()
-                net.get_parameter(PARAM_RADIUS).data = to_device(
-                    torch.tensor([prev_rad]), device
+                _set_parameter(
+                    net, PARAM_RADIUS, to_device(torch.tensor([prev_rad]), device)
                 )
+                tqdm.write("SAY WHAT?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!")
+            else:
+                """_radii[_counter_radii] = net.get_parameter(PARAM_RADIUS).item()
+                _counter_radii += 1"""
 
         # Validate and save to disk if applicable
         if (
             _batch_iterator - 1
         ) % NUM_BATCHES_PER_VALIDATION == NUM_BATCHES_PER_VALIDATION - 1:
+            # tqdm.write(str(net.get_parameter(PARAM_RADIUS).item()))
+            # TODO: TEMP
+            _rad_optimizer = None
+            # Radii averaging
+            """_set_parameter(
+                net,
+                PARAM_RADIUS,
+                to_device(
+                    torch.tensor([float(np.mean(_radii[:_counter_radii]))]), device
+                ),
+            )
+            _counter_radii = 0"""
+            # tqdm.write(str(net.get_parameter(PARAM_RADIUS).item()))
+
             # Validate
             _train_validate(
                 epoch,
@@ -487,12 +536,11 @@ def _calc_center(net: DeepSVDDNet, loader, device, num_training_samples: int) ->
         projections[(i * BATCH_SIZE) : ((i + 1) * BATCH_SIZE), :] = (
             net(to_device(data, device)).cpu().detach().numpy()
         )
-        break
 
     # Derive center parameter
-    center = (
-        np.ones(net.num_output_nodes) * 10
-    )  # projections[0, :]  # np.mean(projections, axis=0)
+    # center = np.ones(net.num_output_nodes) * 10
+    # center = np.ones(net.num_output_nodes) * 100
+    center = np.mean(projections, axis=0)
 
     # Send to GPU
     net.get_parameter(PARAM_CENTER).data = to_device(torch.tensor(center), device)
@@ -500,6 +548,15 @@ def _calc_center(net: DeepSVDDNet, loader, device, num_training_samples: int) ->
     # Inform CLI
     tqdm.write(
         f"Done! Center (mean, std) = ({np.mean(center):.6f}, {np.std(center):.6f})"
+    )
+
+
+def _new_rad_optimizer(net: DeepSVDDNet) -> torch.optim.LBFGS:
+    return torch.optim.LBFGS(
+        [net.get_parameter(PARAM_RADIUS)],
+        line_search_fn="strong_wolfe",
+        max_iter=100,
+        lr=1,
     )
 
 
@@ -543,6 +600,8 @@ def train(dataset: Dataset, start_state: ModelUtil.AuxModelInfo = None) -> None:
         device,
     )
 
+    net.train()
+
     # Load start state if applicable
     if start_state is not None:
         net.load_state_dict(start_state.state)
@@ -554,16 +613,14 @@ def train(dataset: Dataset, start_state: ModelUtil.AuxModelInfo = None) -> None:
         # lr=0.0001,
     )
 
-    rad_optimizer = torch.optim.LBFGS(
-        [net.get_parameter(PARAM_RADIUS)], line_search_fn="strong_wolfe", max_iter=100
-    )
+    rad_optimizer: torch.optim.LBFGS = _new_rad_optimizer(net)
     # rad_optimizer = net_optimizer
 
     # Add function for resetting optimizer
-    rad_optimizer_start_state = rad_optimizer.state_dict()
+    """rad_optimizer_start_state = rad_optimizer.state_dict()
     rad_optimizer.reset_state = lambda: rad_optimizer.load_state_dict(
         rad_optimizer_start_state
-    )
+    )"""
 
     # Scheduler
     scheduler = torch.optim.lr_scheduler.StepLR(
