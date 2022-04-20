@@ -33,6 +33,15 @@ class FileJar:
 
         self._root_dir = root_dir
 
+    def get_root_dir(self) -> Path:
+        """
+        Returns the root directory of this file jar.
+
+        Returns:
+            Path: The root directory of this file jar.
+        """
+        return self._root_dir
+
     def get_file(self, name: str, load_func: Callable[[Path], Any]) -> Any:
         """
         Return the file associated with the given `name` using `load_func`.
