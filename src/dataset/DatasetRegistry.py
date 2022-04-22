@@ -26,7 +26,7 @@ class DatasetRegistry(Registry):
         return list(DatasetRegistry._DATASETS.keys())
 
     @staticmethod
-    def get_resource(name: str) -> Dataset:
+    def get_resource(name: str) -> type[Dataset]:
         """
         Returns a dataset with the given `name` from the registry.
 
@@ -39,5 +39,5 @@ class DatasetRegistry(Registry):
         return DatasetRegistry._DATASETS[name]
 
     @staticmethod
-    def get_resources() -> list[Dataset]:
+    def get_resources() -> list[type[Dataset]]:
         return list(DatasetRegistry._DATASETS.values())

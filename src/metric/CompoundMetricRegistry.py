@@ -26,7 +26,7 @@ class CompoundMetricRegistry(Registry):
         return list(CompoundMetricRegistry._COMPOUND_METRICS.keys())
 
     @staticmethod
-    def get_resource(name: str) -> CompoundMetric:
+    def get_resource(name: str) -> type[CompoundMetric]:
         """
         Returns a compound metric with the given `name` from the registry.
 
@@ -39,5 +39,5 @@ class CompoundMetricRegistry(Registry):
         return CompoundMetricRegistry._COMPOUND_METRICS[name]
 
     @staticmethod
-    def get_resources() -> list[CompoundMetric]:
+    def get_resources() -> list[type[CompoundMetric]]:
         return list(CompoundMetricRegistry._COMPOUND_METRICS.values())
