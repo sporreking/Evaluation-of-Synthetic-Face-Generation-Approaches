@@ -1,24 +1,36 @@
 import abc
-from src.generator import Generator
+from src.generator.Generator import Generator
 import numpy as np
 from typing import Any, Dict, List
 
+from src.core.Setupable import Setupable
 
-class Controller(metaclass=abc.ABCMeta):
+
+class Controller(Setupable, metaclass=abc.ABCMeta):
     """
     An abstract implementation of a controller.
     """
 
-    def __init__(self, name: str, gen: Generator):
+    def __init__(self, name: str, gen: Generator, attributes: list[str] = None):
         """
-        Constructs a new controller.
+        Constructs a new Controller.
 
         Args:
             name (str): The name of the controller.
             gen (Generator): The generator associated with the controller.
+            attributes (list[str], optional): Attributes from the dataset to be used.
+                The dataset is derived from the generator. May be set to `None` if the
+                controller is unsupervised. Default is None.
         """
+
+        # Check attribute names
+        if any("_" in a for a in attributes):
+            raise ValueError("Attribute names may not contain underscores!")
+
         self._name = name
         self._gen = gen
+        self._ds = gen.get_dataset()
+        self._attrs = attributes
 
     def get_name(self) -> str:
         """
@@ -37,31 +49,6 @@ class Controller(metaclass=abc.ABCMeta):
             str: The generator of this controller.
         """
         return self._gen
-
-    @abc.abstractmethod
-    def is_ready() -> bool:
-        """
-        Should return True if setup is ready.
-
-        Returns:
-            bool: True if setup is done.
-        """
-
-    @abc.abstractmethod
-    def is_setup_dependent_on_generator() -> bool:
-        """
-        Should return True if setup is dependent on generator.
-
-        Returns:
-            bool: True if setup is dependent on the generator.
-        """
-
-    @abc.abstractmethod
-    def setup(self) -> None:
-        """
-        Should setup the controller auxiliary models and necessary files.
-        """
-        pass
 
     @abc.abstractmethod
     def parse_native_input(self, input: Dict[str, np.ndarray]) -> np.ndarray:

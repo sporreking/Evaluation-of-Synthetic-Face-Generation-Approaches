@@ -8,7 +8,6 @@ from typing import Any
 from torch.utils.data import DataLoader
 import torchvision.transforms as T
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm
 import math
@@ -16,17 +15,12 @@ from src.util.AuxUtil import AuxModelInfo, save_aux, load_aux_best
 from copy import deepcopy
 from src.environment.EnvironmentManager import EnvironmentManager as em
 from src.controller.ASADControllerModels import get_dec_arch, get_cls_arch
+from src.core.Setupable import SetupMode
 
 CLASS_PREFIX = "CLS"
 DECODER_PREFIX = "DEC"
 DECODER_AGENT_NAME = "asaddecoder"
 ASAD_NAME = "ASAD"
-
-# Setup modes
-# TODO implement continue
-SETUP_MODE_TRAIN_ALL = "train_all"
-SETUP_MODE_TRAIN_MISSING = "train_missing"
-SETUP_MODES = [SETUP_MODE_TRAIN_ALL, SETUP_MODE_TRAIN_MISSING]
 
 
 class ASADController(Controller):
@@ -35,77 +29,70 @@ class ASADController(Controller):
     semantic attribute decoupling.
     """
 
-    def __init__(self, gen: Generator, ds: Dataset, attrs: list[str]):
+    def __init__(self, gen: Generator, attrs: list[str]):
         """
-        Constructor to the ASADController
+        Constructor a new ASADController.
 
         Args:
             gen (Generator): The generator associated with the controller.
-            ds (Dataset): Dataset for training the classifiers.
-            attrs (list[str]): Attributes from the dataset `ds` to be used.
+            attrs (list[str]): Attributes from the dataset to be used.
+                The dataset is derived from the generator.
+
+        Raise:
+            ValueError: If any attribute has an invalid name.
         """
-        super().__init__(ASAD_NAME, gen)
-
-        # Check attribute names
-        if any("_" in a for a in attrs):
-            raise ValueError("Attribute names may not contain underscores!")
-
-        self._attrs = attrs
-        self._ds = ds
+        super().__init__(ASAD_NAME, gen, attrs)
 
         # For saving decoders
         self._decoders = {}
 
-    def is_ready(self) -> bool:
-        # Get model names
-        cls_names, dec_names = self._get_model_names()
+    def _setup_info_func(self, model_name: str):
+        info = load_aux_best(model_name)
+        return (
+            f"Best model was trained for {info.epoch + info.batch / info.num_batches_per_epoch:.3f} epochs | "
+            + f"Training loss = {info.train_loss:.6f} | Validation loss = {info.valid_loss:.6f}"
+        )
 
-        # All model names
-        all_model_names = cls_names + dec_names
+    def reg_setup_modes(self) -> dict[str, SetupMode]:
+        # QoL
+        mn_cls = lambda attr, omit_name=True: self._get_model_name(
+            attr, True, omit_name
+        )
+        mn_dec = lambda attr, omit_name=True: self._get_model_name(
+            attr, False, omit_name
+        )
 
-        # Check if all models are ready.
-        return not None in [load_aux_best(n) for n in all_model_names]
+        # TODO: Implement 'improve' functionality
 
-    def is_setup_dependent_on_generator(self) -> bool:
-        return True
-
-    def setup(self, mode: str) -> None:
-        # Check if valid mode
-        if mode not in SETUP_MODES:
-            raise ValueError(f"Invalid setup mode: {mode}, use any of: {SETUP_MODES}")
-
-        # Retrain all models
-        if mode == SETUP_MODE_TRAIN_ALL:
-            # Classifiers
-            for attr in self._attrs:
-                self._setup_classifier(attr)
-
-            # Decoders
-            for attr in self._attrs:
-                self._setup_decoder(attr)
-
-        # Train only missing models
-        elif mode == SETUP_MODE_TRAIN_MISSING:
-            # Reality check
-            if self.is_ready():
-                return
-
-            # All model names
-            cls_names, dec_names = self._get_model_names()
-
-            # Train missing classifiers
-            missing_cls = self._missing_models(cls_names)
-            for cl in missing_cls:
-                attr = self._get_attr_from_model_name(cl)
-                print(f"Training {attr} classifier!")
-                self._setup_classifier(attr)
-
-            # Train missing decoders
-            missing_dec = self._missing_models(dec_names)
-            for dec in missing_dec:
-                attr = self._get_attr_from_model_name(dec)
-                print(f"Training {attr} decoder!")
-                self._setup_decoder(attr)
+        # Construct modes
+        return {
+            **{
+                mn_cls(attr): SetupMode(
+                    lambda _, batch_size, epochs, attr=attr: self._setup_classifier(
+                        attr, batch_size, epochs
+                    ),
+                    lambda attr=attr: load_aux_best(mn_cls(attr, False)) is not None,
+                    lambda attr=attr: self._setup_info_func(mn_cls(attr, False)),
+                    batch_size=64,
+                    epochs=40,
+                )
+                for attr in self._attrs
+            },
+            **{
+                mn_dec(attr): SetupMode(
+                    lambda _, batch_size, epochs, iter_per_epoch, attr=attr: self._setup_decoder(
+                        attr, epochs, iter_per_epoch, batch_size
+                    ),
+                    lambda attr=attr: load_aux_best(mn_dec(attr, False)) is not None,
+                    lambda attr=attr: self._setup_info_func(mn_dec(attr, False)),
+                    required_modes=[mn_cls(attr)],
+                    batch_size=3,
+                    epochs=15,
+                    iter_per_epoch=2000,
+                )
+                for attr in self._attrs
+            },
+        }
 
     def parse_native_input(self, input: dict[str, np.ndarray]) -> np.ndarray:
         """
@@ -172,9 +159,7 @@ class ASADController(Controller):
         for j in range(native_input.shape[1]):
             attr = list(native_input[0, j].keys())[0]
             if attr not in self._decoders:
-                name = "_".join(
-                    (self._name, DECODER_PREFIX, self._gen.get_name(), attr)
-                )
+                name = self._get_model_name(attr, classifier=False)
                 dec = load_aux_best(name)
                 model_cp = deepcopy(model)
                 model_cp.load_state_dict(dec.state)
@@ -193,9 +178,7 @@ class ASADController(Controller):
                     # Only modify if value is non-zero.
                     if val != 0:
                         attr = list(d.keys())[0]
-                        name = "_".join(
-                            (self._name, DECODER_PREFIX, self._gen.get_name(), attr)
-                        )
+                        name = self._get_model_name(attr, classifier=False)
 
                         # Only transfer decoder to GPU when necessary.
                         if not old_name == name:
@@ -221,25 +204,42 @@ class ASADController(Controller):
         # Generate images based on updated latent codes
         return self._gen.generate(latent_codes)
 
-    def _get_model_names(self) -> tuple[list[str], list[str]]:
-        # Construct classifier model names
-        cls_names = [
+    def _get_model_name(self, attr: str, classifier: bool, omit_name: bool = False):
+        """Derive model name for classifier or decoder (boolean flip)."""
+        return (
             "_".join(
                 (
-                    self._name,
+                    *([] if omit_name else [self._name]),
                     CLASS_PREFIX,
                     self._ds.get_name(self._ds.get_resolution()),
                     attr,
                 )
             )
+            if classifier
+            else "_".join(
+                (
+                    *([] if omit_name else [self._name]),
+                    DECODER_PREFIX,
+                    self._gen.get_name(),
+                    self._ds.get_name(self._ds.get_resolution()),
+                    attr,
+                )
+            )
+        )
+
+    def _get_model_names(self, omit_name: bool = False) -> tuple[list[str], list[str]]:
+        # Construct classifier model names
+        cls_names = [
+            self._get_model_name(attr, classifier=True, omit_name=omit_name)
             for attr in self._attrs
         ]
 
         # Construct decoder model names
         dec_names = [
-            "_".join((self._name, DECODER_PREFIX, self._gen.get_name(), attr))
+            self._get_model_name(attr, classifier=False, omit_name=omit_name)
             for attr in self._attrs
         ]
+
         return cls_names, dec_names
 
     def _get_attr_from_model_name(self, name: str) -> str:
@@ -273,14 +273,7 @@ class ASADController(Controller):
         model = CU.to_device(get_cls_arch(), device)
 
         # Train and validate the classifier
-        name = "_".join(
-            (
-                self._name,
-                CLASS_PREFIX,
-                self._ds.get_name(self._ds.get_resolution()),
-                attr,
-            )
-        )
+        name = self._get_model_name(attr, classifier=True)
         self._fit_classifier(model, train_dl, device, epochs, name)
 
     def _fit_classifier(self, model, train_dl, device, epochs, name) -> None:
@@ -330,8 +323,7 @@ class ASADController(Controller):
                 )
             )
 
-            # TODO numofbatch -> training>_batch
-            # Save result-
+            # Save result
             save_aux(
                 name,
                 AuxModelInfo(
@@ -387,23 +379,9 @@ class ASADController(Controller):
     ) -> None:
 
         # Define parameters
-        cls_name = "_".join(
-            (
-                self._name,
-                CLASS_PREFIX,
-                self._ds.get_name(self._ds.get_resolution()),
-                attr,
-            )
-        )
+        cls_name = self._get_model_name(attr, classifier=True)
+        dec_name = self._get_model_name(attr, classifier=False)
         gen_name = self._gen.get_name()
-        dec_name = "_".join(
-            (
-                self._name,
-                DECODER_PREFIX,
-                gen_name,
-                attr,
-            )
-        )
 
         # Train decoder using generator env.
         em.run(

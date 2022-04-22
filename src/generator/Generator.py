@@ -2,20 +2,24 @@ import abc
 import numpy as np
 from typing import List
 
+from src.dataset.Dataset import Dataset
+
 
 class Generator(metaclass=abc.ABCMeta):
     """
     An abstract implementation of a generator.
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, dataset: Dataset):
         """
         Constructs a new generator.
 
         Args:
             name (str): The name of the generator.
+            dataset (Dataset): The dataset to associate the generator with.
         """
         self._name = name
+        self._dataset = dataset
 
     def get_name(self) -> str:
         """
@@ -25,6 +29,15 @@ class Generator(metaclass=abc.ABCMeta):
             str: The name of this generator.
         """
         return self._name
+
+    def get_dataset(self) -> Dataset:
+        """
+        Returns the dataset associated with this generator.
+
+        Returns:
+            Dataset: the dataset associated with this generator.
+        """
+        return self._dataset
 
     def random_latent_code(self, n: int = 1) -> np.ndarray:
         """

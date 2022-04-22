@@ -1,5 +1,6 @@
 from src.controller.Controller import Controller
 from src.generator.Generator import Generator
+from src.core.Setupable import SetupMode
 import numpy as np
 
 IDENTITY_NAME = "IDENTITY"
@@ -24,17 +25,8 @@ class IdentityController(Controller):
         """
         super().__init__(IDENTITY_NAME, gen)
 
-    def is_ready(self) -> bool:
-        return True
-
-    def is_setup_dependent_on_generator(self) -> bool:
-        return False
-
-    def setup(self, mode: str = None) -> None:
-        """
-        No setup required. Not used in the identity controller.
-        """
-        pass
+    def reg_setup_modes(self) -> dict[str, SetupMode]:
+        return {}
 
     def parse_native_input(self, input: dict[str, np.ndarray] = None) -> None:
         """
