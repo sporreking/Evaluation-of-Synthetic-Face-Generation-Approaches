@@ -27,7 +27,7 @@ class GeneratorRegistry(Registry):
         return list(GeneratorRegistry._GENERATORS.keys())
 
     @staticmethod
-    def get_resource(name: str) -> Generator:
+    def get_resource(name: str) -> type[Generator]:
         """
         Returns a generator with the given `name` from the registry.
 
@@ -40,5 +40,5 @@ class GeneratorRegistry(Registry):
         return GeneratorRegistry._GENERATORS[name]
 
     @staticmethod
-    def get_resources() -> List[Generator]:
+    def get_resources() -> List[type[Generator]]:
         return list(GeneratorRegistry._GENERATORS.values())

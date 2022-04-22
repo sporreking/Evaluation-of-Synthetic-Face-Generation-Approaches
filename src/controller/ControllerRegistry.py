@@ -53,7 +53,7 @@ class ControllerRegistry(Registry):
         return list(ControllerRegistry._CONTROLLERS[controller_name].keys())
 
     @staticmethod
-    def get_resource(name: str, gen_name: str) -> Controller:
+    def get_resource(name: str, gen_name: str) -> type[Controller]:
         """
         Returns a controller with the given `name` and `gen_name` from the registry.
 
@@ -67,7 +67,7 @@ class ControllerRegistry(Registry):
         return ControllerRegistry._CONTROLLERS[name][gen_name]
 
     @staticmethod
-    def get_resources() -> List[Controller]:
+    def get_resources() -> List[type[Controller]]:
         """
         Returns all controllers from the registry.
 
