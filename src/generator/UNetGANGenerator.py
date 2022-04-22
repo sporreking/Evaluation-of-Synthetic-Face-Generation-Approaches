@@ -1,8 +1,8 @@
 from src.generator.Generator import Generator
+from src.dataset.Dataset import Dataset
 import numpy as np
 from src.environment.EnvironmentManager import EnvironmentManager as em
 from typing import List
-import os.path
 from os import path
 
 UNETGAN_NAME = "unetgan"
@@ -13,11 +13,14 @@ class UNetGANGenerator(Generator):
     _PATH_TO_IMAGES = "environment/unetgan/out/sample/"
     _IMAGE_EXT = ".png"
 
-    def __init__(self):
+    def __init__(self, dataset: Dataset):
         """
-        UNetGANGenerator constructor.
+        Constructs a new UNetGANGenerator.
+
+        Args:
+            dataset (Dataset): The dataset to associate the generator with.
         """
-        super().__init__(UNETGAN_NAME)
+        super().__init__(UNETGAN_NAME, dataset)
 
     def latent_space_std(self) -> np.ndarray:
         """
