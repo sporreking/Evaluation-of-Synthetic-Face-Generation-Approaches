@@ -16,6 +16,7 @@ from copy import deepcopy
 from src.environment.EnvironmentManager import EnvironmentManager as em
 from src.controller.ASADControllerModels import get_dec_arch, get_cls_arch
 from src.core.Setupable import SetupMode
+from torch import nn
 
 CLASS_PREFIX = "CLS"
 DECODER_PREFIX = "DEC"
@@ -395,3 +396,53 @@ class ASADController(Controller):
             classifier_name=cls_name,
         ):
             raise RuntimeError(f"Agent failed! Could not train decoder '{dec_name}'.")
+
+    def _classifier_exists(self, attr: str):
+        cls_name = self._get_model_name(attr, classifier=True)
+
+        # Check if model is ready.
+        return not load_aux_best(cls_name) is None
+
+    def get_classifier(
+        self,
+        attr: str,
+        batch_size: int = 64,
+        epochs: int = 40,
+        train_if_missing: bool = True,
+    ) -> nn.Sequential:
+        """
+        Returns the classifier associated with the given `attr`.
+
+        Args:
+            attr (str): Attribute which the classifier is a predictor for.
+            batch_size (int, optional): The batch size. Defaults to 64.
+            epochs (int, optional): The number of epochs to train. Defaults to 40.
+            train_if_missing (bool, optional): True if the model should be trained
+                if missing. Defaults to True.
+
+        Raises:
+            FileNotFoundError: Error if classifier does not exist and `train_if_missing` is False.
+
+        Returns:
+            nn.Sequential: The classifier.
+        """
+        cls_name = self._get_model_name(attr, classifier=True)
+        if self._classifier_exists(attr):
+            # Load classifier
+            return self._load_classifier(cls_name)
+
+        elif train_if_missing:
+            # Train classifier
+            self._setup_classifier(attr, batch_size=batch_size, epochs=epochs)
+
+            # Load classifier
+            return self._load_classifier(cls_name)
+
+        else:
+            raise FileNotFoundError(f"No classifer for {attr} found!")
+
+    def _load_classifier(name: str) -> nn.Sequential:
+        cls_model = get_cls_arch()
+        cls_model.load_state_dict(load_aux_best(name).state)
+        cls_model.eval()
+        return cls_model
