@@ -195,7 +195,11 @@ class ASADController(Controller):
                         latent_codes[i] = (
                             z
                             + val
-                            * model(CU.to_device(torch.from_numpy(z), device))
+                            * model(
+                                CU.to_device(
+                                    torch.from_numpy(z.astype(np.float32)), device
+                                )
+                            )
                             .cpu()
                             .numpy()
                         )
