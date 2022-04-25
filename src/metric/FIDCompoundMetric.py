@@ -1,9 +1,11 @@
 from src.metric.CompoundMetric import CompoundMetric
 from src.metric.SampleMetricManager import SampleMetricManager
-import src.metric.CompoundMetricManager
+from src.core.Setupable import SetupMode
+import src.metric.CompoundMetricManager as CompoundMetricManager
 from typing import Any
 from cleanfid import fid
 from src.population.Population import Population
+from src.dataset.FFHQDataset import FFHQDataset
 
 FID_NAME = "FID"
 FID_CALC_MODES = ["clean", "legacy_tensorflow", "legacy_pytorch"]
@@ -18,7 +20,7 @@ NUM_WORKERS = 0
 class FIDCompoundMetric(CompoundMetric):
     def __init__(
         self,
-        cmm,
+        cmm: CompoundMetricManager.CompoundMetricManager,
         smm: SampleMetricManager = None,
     ):
         """
@@ -34,7 +36,17 @@ class FIDCompoundMetric(CompoundMetric):
         # Init storage structure for this metric
         self._fid = dict()
 
-    def setup(self, mode: str = None, calc_mode: str = FID_DEFAULT_CALC_MODE) -> None:
+    def reg_setup_modes(self) -> dict[str, SetupMode]:
+        ds = self.get_dataset()
+        return {
+            f"statistics_{fcm}_{ds.get_name(ds.get_resolution())}": SetupMode(
+                lambda _, fcm=fcm: self._setup(fcm),
+                lambda fcm=fcm: self._is_ready(fcm),
+            )
+            for fcm in FID_CALC_MODES
+        }
+
+    def _setup(self, calc_mode: str = FID_DEFAULT_CALC_MODE) -> None:
         """
         Setup the needed statistics to calculate the metric.
 
@@ -43,7 +55,6 @@ class FIDCompoundMetric(CompoundMetric):
         For more information regarding `calc_mode`, see the documentation for `calc()`.
 
         Args:
-            mode (str, optional): Not used in this implementation. Defaults to None.
             calc_mode (str, optional): Calc mode determines FID implementation, different statistics
                 needed for different implementations. See documentation on `calc()` for more information.
                 Defaults to `FID_DEFAULT_CALC_MODE` ("clean").
@@ -59,9 +70,11 @@ class FIDCompoundMetric(CompoundMetric):
 
         # Calculate custom statistics
         ds = self.get_dataset()
-        fid.make_custom_stats(ds.get_name(), str(ds.get_image_dir()), mode=calc_mode)
+        fid.make_custom_stats(
+            ds.get_name(ds.get_resolution()), str(ds.get_image_dir()), mode=calc_mode
+        )
 
-    def is_ready(self, calc_mode=FID_DEFAULT_CALC_MODE) -> bool:
+    def _is_ready(self, calc_mode=FID_DEFAULT_CALC_MODE) -> bool:
         """
         Checks if compound metric is ready for calculations.
 

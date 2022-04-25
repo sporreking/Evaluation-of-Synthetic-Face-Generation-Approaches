@@ -1,16 +1,17 @@
 from src.dataset.Dataset import Dataset
 from src.metric.SampleMetricManager import SampleMetricManager
 from src.population.Population import Population
-import src.metric.CompoundMetricManager
+from src.core.Setupable import Setupable
+import src.metric.CompoundMetricManager as CompoundMetricManager
 import abc
 from typing import Any
 
 
-class CompoundMetric(metaclass=abc.ABCMeta):
+class CompoundMetric(Setupable, metaclass=abc.ABCMeta):
     def __init__(
         self,
         name: str,
-        compound_metric_manager,
+        compound_metric_manager: CompoundMetricManager.CompoundMetricManager,
         smm: SampleMetricManager = None,
     ):
         """
@@ -58,28 +59,6 @@ class CompoundMetric(metaclass=abc.ABCMeta):
             str: The name of this compound metric.
         """
         return self._name
-
-    @abc.abstractmethod
-    def setup(self, mode: str) -> None:
-        """
-        Should train/prepare all auxiliary models required for performing
-        a calculation with `calc()`.
-
-            mode (str): The mode of the setup. The available modes
-                depend on the the metric.
-        """
-        pass
-
-    @abc.abstractmethod
-    def is_ready(self) -> bool:
-        """
-        Should return `True` if the `setup()` has been completed, i.e.,
-        if all auxiliary models are at disposal when calling `calc()`.
-
-        Returns:
-            bool: `True` if the metric is set up.
-        """
-        pass
 
     @abc.abstractmethod
     def calc(self, **parameters: Any) -> Any:
