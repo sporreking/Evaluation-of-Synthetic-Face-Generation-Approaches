@@ -1,5 +1,6 @@
-from pyparsing import col
-import src.metric.CompoundMetric
+from __future__ import annotations
+
+import src.metric.CompoundMetric as CompoundMetric
 from src.metric.SampleMetricManager import SampleMetricManager
 from src.population.Population import Population
 from src.dataset.Dataset import Dataset
@@ -43,7 +44,7 @@ class CompoundMetricManager:
         """
         # Input check
         for c in compound_metrics:
-            if not issubclass(c, src.metric.CompoundMetric.CompoundMetric):
+            if not issubclass(c, CompoundMetric.CompoundMetric):
                 raise ValueError(f"Not a CompoundMetric: '{c.__name__}'")
 
         self._dataset = dataset
@@ -76,6 +77,16 @@ class CompoundMetricManager:
             for column in file_jar_metrics:
                 if column in self._metrics:
                     self._metrics[column] = file_jar_metrics[column]
+
+    def get_metric_instances(self) -> list[CompoundMetric.CompoundMetric]:
+        """
+        Returns a list of all compound metric instances. There should be exactly
+        one instance for each metric type specified upon manager construction.
+
+        Returns:
+            list[CompoundMetricManager]: A list of all compound metric instances.
+        """
+        return list(self._compound_metrics.values())
 
     def get_population(self) -> Population:
         """
