@@ -71,7 +71,7 @@ class Population:
         Returns:
             int: The number of samples contained by this population.
         """
-        return self._data.shape[0]
+        return 0 if self._data is None else self._data.shape[0]
 
     def _move_images(
         self, uris: list[str], start_id: int, append: bool
