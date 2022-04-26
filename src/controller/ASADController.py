@@ -56,10 +56,8 @@ class ASADController(Controller):
 
     def reg_setup_modes(self) -> dict[str, SetupMode]:
         # QoL
-        mn_cls = lambda attr, omit_name=True: self._get_model_name(
-            attr, True, omit_name
-        )
-        mn_dec = lambda attr, omit_name=True: self._get_model_name(
+        mn_cls = lambda attr, omit_name=True: self.get_model_name(attr, True, omit_name)
+        mn_dec = lambda attr, omit_name=True: self.get_model_name(
             attr, False, omit_name
         )
 
@@ -160,7 +158,7 @@ class ASADController(Controller):
         for j in range(native_input.shape[1]):
             attr = list(native_input[0, j].keys())[0]
             if attr not in self._decoders:
-                name = self._get_model_name(attr, classifier=False)
+                name = self.get_model_name(attr, classifier=False)
                 dec = load_aux_best(name)
                 model_cp = deepcopy(model)
                 model_cp.load_state_dict(dec.state)
@@ -179,7 +177,7 @@ class ASADController(Controller):
                     # Only modify if value is non-zero.
                     if val != 0:
                         attr = list(d.keys())[0]
-                        name = self._get_model_name(attr, classifier=False)
+                        name = self.get_model_name(attr, classifier=False)
 
                         # Only transfer decoder to GPU when necessary.
                         if not old_name == name:
@@ -209,8 +207,20 @@ class ASADController(Controller):
         # Generate images based on updated latent codes
         return self._gen.generate(latent_codes)
 
-    def _get_model_name(self, attr: str, classifier: bool, omit_name: bool = False):
-        """Derive model name for classifier or decoder (boolean flip)."""
+    def get_model_name(self, attr: str, classifier: bool, omit_name: bool = False):
+        """
+        Derive model name for classifier or decoder (boolean flip).
+
+        Args:
+            attr (str): Attribute associated with the model.
+            classifier (bool): True for classifier model name, else
+                decoder model name will be returned
+            omit_name (bool, optional): True if Controller name should be omitted
+                omitted from model name. Defaults to False.
+
+        Returns:
+            _type_: _description_
+        """
         return (
             "_".join(
                 (
@@ -235,13 +245,13 @@ class ASADController(Controller):
     def _get_model_names(self, omit_name: bool = False) -> tuple[list[str], list[str]]:
         # Construct classifier model names
         cls_names = [
-            self._get_model_name(attr, classifier=True, omit_name=omit_name)
+            self.get_model_name(attr, classifier=True, omit_name=omit_name)
             for attr in self._attrs
         ]
 
         # Construct decoder model names
         dec_names = [
-            self._get_model_name(attr, classifier=False, omit_name=omit_name)
+            self.get_model_name(attr, classifier=False, omit_name=omit_name)
             for attr in self._attrs
         ]
 
@@ -278,7 +288,7 @@ class ASADController(Controller):
         model = CU.to_device(get_cls_arch(), device)
 
         # Train and validate the classifier
-        name = self._get_model_name(attr, classifier=True)
+        name = self.get_model_name(attr, classifier=True)
         self._fit_classifier(model, train_dl, device, epochs, name)
 
     def _fit_classifier(self, model, train_dl, device, epochs, name) -> None:
@@ -384,8 +394,8 @@ class ASADController(Controller):
     ) -> None:
 
         # Define parameters
-        cls_name = self._get_model_name(attr, classifier=True)
-        dec_name = self._get_model_name(attr, classifier=False)
+        cls_name = self.get_model_name(attr, classifier=True)
+        dec_name = self.get_model_name(attr, classifier=False)
         gen_name = self._gen.get_name()
 
         # Train decoder using generator env.
@@ -402,7 +412,7 @@ class ASADController(Controller):
             raise RuntimeError(f"Agent failed! Could not train decoder '{dec_name}'.")
 
     def _classifier_exists(self, attr: str):
-        cls_name = self._get_model_name(attr, classifier=True)
+        cls_name = self.get_model_name(attr, classifier=True)
 
         # Check if model is ready.
         return not load_aux_best(cls_name) is None
@@ -445,7 +455,7 @@ class ASADController(Controller):
         else:
             raise FileNotFoundError(f"No classifer for {attr} found!")
 
-    def _load_classifier(name: str) -> nn.Sequential:
+    def _load_classifier(self, name: str) -> nn.Sequential:
         cls_model = get_cls_arch()
         cls_model.load_state_dict(load_aux_best(name).state)
         cls_model.eval()
