@@ -24,7 +24,7 @@ class Controller(Setupable, metaclass=abc.ABCMeta):
         """
 
         # Check attribute names
-        if any("_" in a for a in attributes):
+        if attributes is not None and any("_" in a for a in attributes):
             raise ValueError("Attribute names may not contain underscores!")
 
         self._name = name
