@@ -228,6 +228,15 @@ class Setupable(metaclass=abc.ABCMeta):
                 for pname in sm.parameters.keys()
             }
 
+            # Print setup mode to CLI
+            print("=" * 30)
+            print(
+                "=" * int((30 - (len(mode) + 2)) / 2)
+                + f" {mode} "
+                + "=" * int((30 - (len(mode) + 2)) / 2)
+            )
+            print("=" * 30)
+
             # Perform actual setup
             sm.setup(improve_if_completed and sm.ready(), **p)
 
