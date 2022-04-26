@@ -4,7 +4,7 @@ from src.dataset.TorchImageDataset import TorchImageDataset
 from src.generator.Generator import Generator
 import numpy as np
 import src.util.CudaUtil as CU
-from typing import Any
+from typing import Any, List, Tuple
 from torch.utils.data import DataLoader
 import torchvision.transforms as T
 import torch
@@ -143,7 +143,7 @@ class ASADController(Controller):
 
     def generate_native(
         self, latent_codes: np.ndarray, native_input: np.ndarray
-    ) -> list[str]:
+    ) -> Tuple[List[str], np.ndarray]:
 
         # Get device
         device = CU.get_default_device()
@@ -205,7 +205,7 @@ class ASADController(Controller):
                         old_name = name
 
         # Generate images based on updated latent codes
-        return self._gen.generate(latent_codes)
+        return self._gen.generate(latent_codes), latent_codes
 
     def get_model_name(self, attr: str, classifier: bool, omit_name: bool = False):
         """

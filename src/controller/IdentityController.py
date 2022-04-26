@@ -2,6 +2,7 @@ from src.controller.Controller import Controller
 from src.generator.Generator import Generator
 from src.core.Setupable import SetupMode
 import numpy as np
+from typing import List, Tuple
 
 IDENTITY_NAME = "IDENTITY"
 
@@ -36,7 +37,7 @@ class IdentityController(Controller):
 
     def generate_native(
         self, latent_codes: np.ndarray, native_input: np.ndarray = None
-    ) -> list[str]:
+    ) -> Tuple[List[str], np.ndarray]:
         """
         Generates the latent codes using the associated generator `self._gen`.
 
@@ -47,7 +48,7 @@ class IdentityController(Controller):
             native_input (np.ndarray, optional): Not used in the identity controller. Defaults to None.
 
         Returns:
-            list[str]: URIs for the generated images.
+            Tuple[List[str], np.ndarray]: URIs for the generated images and the latent codes (not manipulated in this case)
         """
         # Generate images based solely on the latent codes
-        return self._gen.generate(latent_codes)
+        return self._gen.generate(latent_codes), latent_codes

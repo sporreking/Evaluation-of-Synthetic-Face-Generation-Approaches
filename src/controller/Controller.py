@@ -1,8 +1,8 @@
 import abc
 from src.generator.Generator import Generator
 import numpy as np
-from typing import Any, Dict, List
-
+from typing import Any, Dict, List, Union, Tuple
+import random
 from src.core.Setupable import Setupable
 
 
@@ -50,6 +50,45 @@ class Controller(Setupable, metaclass=abc.ABCMeta):
         """
         return self._gen
 
+    def sample_random_input(
+        self, n: int, attr_sample_mode: Union[int, str]
+    ) -> Dict[str, np.ndarray]:
+        """
+        Samples input from a uniform distribution.
+
+        Args:
+            n (int): Number of samples to generate standardized inputs for.
+            attr_sample_mode (Union[int, str]): The number of random attributes to choose, or "random"
+                which randomizes the number of random attributes for each sample.
+
+        Returns:
+            Dict[str,np.ndarray]: `n` samples in standardized representation to be used
+                in as input to `parse_native_input()`.
+        """
+        num_attr = len(self._attrs)
+        columns = []
+        for i in range(n):
+            # Define what attributes to use for this column
+            if attr_sample_mode == "random":
+                attrs_subset = random.sample(
+                    self._attrs, np.random.randint(0, num_attr)
+                )
+            elif type(attr_sample_mode) == int:
+                assert attr_sample_mode <= num_attr
+                attrs_subset = random.sample(self._attrs, num_attr)
+
+            # Generate column input (1 sample)
+            columns.append(
+                [
+                    np.random.uniform(-1, 1) if attr in attrs_subset else 0
+                    for attr in self._attrs
+                ]
+            )
+
+        # Reshape and create dict
+        arr = np.array(columns).T
+        return {attr: arr[i, :].reshape(n) for attr in enumerate(self._attrs)}
+
     @abc.abstractmethod
     def parse_native_input(self, input: Dict[str, np.ndarray]) -> np.ndarray:
         """
@@ -86,7 +125,7 @@ class Controller(Setupable, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def generate_native(
         self, latent_codes: np.ndarray, native_input: np.ndarray
-    ) -> List[str]:
+    ) -> Tuple[List[str], np.ndarray]:
         """
         Should manipulate `latent_codes` according to `native_input` and then generate the manipulated images
         given the manipulated latent codes. Generation should be done by calling the associated Generator.
@@ -107,5 +146,5 @@ class Controller(Setupable, metaclass=abc.ABCMeta):
                 on native format.
 
         Returns:
-            list[str]: URIs for the generated images.
+            Tuple[List[str], np.ndarray]: URIs for the generated images and the manipulated latent codes.
         """
