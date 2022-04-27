@@ -2,6 +2,11 @@ from argparse import ArgumentParser
 from pathlib import Path
 import sys
 from typing import Callable
+
+import os
+
+os.environ["MKL_THREADING_LAYER"] = "GNU"
+
 import torch
 import math
 from tqdm import tqdm
@@ -42,7 +47,7 @@ def main():
     associated with the decoder.
 
     ! Needs to be extended when new generators are added.
-    * Now supports the following generators: unetgan
+    * Now supports the following generators: unetgan, stylegan2ada
     """
     config = _get_config()
 
@@ -51,10 +56,13 @@ def main():
     if config["generator_name"] == "unetgan":
         from environment.agent_unetgan import get_generator
         from src.generator.UNetGANGenerator import UNetGANGenerator as Gen
+    elif config["generator_name"] == "stylegan2ada":
+        from environment.agent_stylegan2ada import get_generator
+        from src.generator.StyleGAN2ADAGenerator import StyleGAN2ADAGenerator as Gen
 
     # Get generator
     G = get_generator()
-    _setup_decoder(config, Gen(), G)
+    _setup_decoder(config, Gen(None), G)
 
 
 def _setup_decoder(
