@@ -23,7 +23,7 @@ from sklearn.svm import SVC
 from src.core.Setupable import SetupMode
 from src.util.AuxUtil import load_aux_best
 
-IFGAN_NAME = "InterFaceGAN"
+INTERFACEGAN_NAME = "InterFaceGAN"
 STEP_MAX = 3  # * 5 max before bad results in paper
 USE_PROJECTED = True
 
@@ -46,7 +46,7 @@ class InterFaceGANController(Controller):
             gen (Generator): The generator associated with the controller.
             attrs (list[str]): Attributes to be used.
         """
-        super().__init__(IFGAN_NAME, gen, attrs)
+        super().__init__(INTERFACEGAN_NAME, gen, attrs)
 
         # For saving support vector classifiers
         self._svcs = {}
