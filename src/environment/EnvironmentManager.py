@@ -1,4 +1,5 @@
 from pathlib import Path
+from sys import platform
 from os import system
 import socket
 import struct
@@ -55,7 +56,7 @@ class EnvironmentManager:
         return res == 0
 
     @staticmethod
-    def run(agent_name: str, env_name: str = None, *args, **kwargs) -> int:
+    def run(agent_name: str, env_name: str = None, *args, **kwargs) -> bool:
         """
         This function will start the specified agent(named `agent_name`) of the specified
         environment in a new system process.For this to work,
@@ -92,12 +93,20 @@ class EnvironmentManager:
         kwargs_str = " ".join([f'--{str(k)} "{str(v)}"' for k, v in kwargs.items()])
 
         # Start the conda process
-        print(f"======== {agent_file} ========")
-        res = system(
-            f"conda activate {EnvironmentManager.CONDA_ENV_PREFIX}_{env_name} && "
-            + f"python {agent_file} {args_str} {kwargs_str}"
-        )
-        print(f"========={'=' * len(str(agent_file))}=========")
+        print(f"======== {agent_file} ({platform}) ========")
+        res = None
+        if platform == "win32":
+            res = system(
+                f"conda activate {EnvironmentManager.CONDA_ENV_PREFIX}_{env_name} && "
+                + f"python {agent_file} {args_str} {kwargs_str}"
+            )
+        else:
+            res = system(
+                f"conda run -n {EnvironmentManager.CONDA_ENV_PREFIX}_{env_name} "
+                + "--no-capture-output --live-stream "
+                + f"python {agent_file} {args_str} {kwargs_str}"
+            )
+        print(f"========={'=' * (len(str(agent_file))+len(platform))}============")
 
         return res == 0
 
@@ -119,6 +128,7 @@ def _latent_code_agent(latent_codes: np.ndarray) -> None:
 
     # Setup socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(("localhost", DEFAULT_LATENT_CODE_PORT))
     s.listen(1)
 
