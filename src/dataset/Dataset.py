@@ -4,6 +4,8 @@ from src.util.FileJar import FileJar
 from src.dataset.TorchImageDataset import TorchImageDataset
 import pandas as pd
 
+from typing import List, Tuple
+
 
 class Dataset(metaclass=abc.ABCMeta):
     """
@@ -136,7 +138,7 @@ class Dataset(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_image_paths(self) -> list[Path]:
+    def get_image_paths(self) -> List[Path]:
         """
         Should return a list of paths to the image locations of the dataset.
 
@@ -181,7 +183,7 @@ class Dataset(metaclass=abc.ABCMeta):
             return TorchImageDataset(self.get_image_paths(), transform, attr=attr)
 
     @abc.abstractmethod
-    def init_files(self) -> tuple[FileJar, pd.DataFrame]:
+    def init_files(self) -> Tuple[FileJar, pd.DataFrame]:
         """
         Extract labels from the dataset and saves them to a
         FileJar as well as a pd.DataFrame.

@@ -1,9 +1,11 @@
 from pathlib import Path
 
 from PIL import Image
-import torch
+import torch.utils.data
 import pandas as pd
 import math
+
+from typing import List
 
 
 class TorchImageDataset(torch.utils.data.Dataset):
@@ -13,7 +15,7 @@ class TorchImageDataset(torch.utils.data.Dataset):
 
     def __init__(
         self,
-        img_paths: list[Path],
+        img_paths: List[Path],
         transform,
         attr: str = None,
         df: pd.DataFrame = None,
@@ -60,7 +62,7 @@ class TorchImageDataset(torch.utils.data.Dataset):
         res = self._df.loc[[idx]][self._attr].values[0]
         return res
 
-    def _remove_unlabeled_images(self, image_paths: list[Path]) -> list[Path]:
+    def _remove_unlabeled_images(self, image_paths: List[Path]) -> List[Path]:
         indexes = self._df.index
         digits = int(math.log10(max(self._df.index))) + 1
         paths = []
