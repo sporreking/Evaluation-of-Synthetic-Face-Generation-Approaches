@@ -10,6 +10,8 @@ from multiprocessing import Pool, cpu_count
 import numpy as np
 from pathlib import Path
 
+from typing import List, Tuple
+
 _DEFAULT_RES = 256
 FFHQ_NAME = "FFHQ"
 FFHQ_DEF_NAME = FFHQ_NAME + "_" + str(_DEFAULT_RES)
@@ -66,7 +68,7 @@ class FFHQDataset(Dataset):
     def get_image_dir(self) -> Path:
         return self.get_path() / self.DS_DIR_IMAGES
 
-    def get_image_paths(self) -> list[Path]:
+    def get_image_paths(self) -> List[Path]:
         return self._img_paths
 
     def get_processed_labels(self) -> pd.DataFrame:
@@ -97,7 +99,7 @@ class FFHQDataset(Dataset):
         df = df.select_dtypes(include=["float32"])
         return df
 
-    def init_files(self) -> tuple[FileJar, pd.DataFrame]:
+    def init_files(self) -> Tuple[FileJar, pd.DataFrame]:
         """
         Initilizes the label files related to the dataset.
         Extract labels from the dataset and saves them with a
@@ -118,7 +120,7 @@ class FFHQDataset(Dataset):
             self._img_paths = self._calc_img_paths()
             return file_jar, df
 
-    def _calc_img_paths(self) -> list[Path]:
+    def _calc_img_paths(self) -> List[Path]:
         ext = next(Path(self.get_image_dir()).iterdir()).name.split(".")[-1]
         return list(
             [
@@ -127,7 +129,7 @@ class FFHQDataset(Dataset):
             ]
         )
 
-    def _parse_json(self) -> tuple[FileJar, pd.DataFrame]:
+    def _parse_json(self) -> Tuple[FileJar, pd.DataFrame]:
         """
         Extract labels from the dataset and saves them with a
         FileJar as well as a pd.DataFrame. Extraction is done by
@@ -187,7 +189,7 @@ class FFHQDataset(Dataset):
         return file_jar, df_conc
 
     # Multiprocess function
-    def _mp_json_parser(self, args: tuple[int, str]) -> pd.DataFrame:
+    def _mp_json_parser(self, args: Tuple[int, str]) -> pd.DataFrame:
         """
         Multiprocessing function used to prase one JSON-file into
         a pd.DataFrame row.
