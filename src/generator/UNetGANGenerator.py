@@ -73,7 +73,8 @@ class UNetGANGenerator(Generator):
         em.send_latent_codes(latent_codes)
 
         # Run U-NetGAN
-        em.run(UNETGAN_NAME)
+        if not em.run(self.get_name()):
+            raise RuntimeError("Agent failed! Could not generate images.")
 
         # Construct list of URIs
         uris = [

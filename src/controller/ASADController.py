@@ -384,7 +384,7 @@ class ASADController(Controller):
         gen_name = self._gen.get_name()
 
         # Train decoder using generator env.
-        em.run(
+        if not em.run(
             DECODER_AGENT_NAME,
             gen_name,
             epochs=epochs,
@@ -393,4 +393,5 @@ class ASADController(Controller):
             generator_name=gen_name,
             decoder_name=dec_name,
             classifier_name=cls_name,
-        )
+        ):
+            raise RuntimeError(f"Agent failed! Could not train decoder '{dec_name}'.")
