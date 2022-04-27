@@ -38,7 +38,7 @@ class IdentityController(Controller):
         self, latent_codes: np.ndarray, native_input: np.ndarray = None
     ) -> list[str]:
         """
-        Generates the latent codes using the associated generator ´self._gen´.
+        Generates the latent codes using the associated generator `self._gen`.
 
         Note that no modifications are made to the latent codes and `native_input` is ignored.
 
