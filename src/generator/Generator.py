@@ -42,6 +42,8 @@ class Generator(metaclass=abc.ABCMeta):
     def random_latent_code(self, n: int = 1) -> np.ndarray:
         """
         Samples `n` random latent codes based on the statistics of this generator.
+        The drawn samples are preprocessed with `preprocess_latent_code(codes)`
+        before being returned.
 
         Raises:
             ValueError: If the dimensions of `latent_space_mean()` and
@@ -52,7 +54,8 @@ class Generator(metaclass=abc.ABCMeta):
                 Default to 1.
 
         Returns:
-            np.ndarray: The new random latent code.
+            np.ndarray: The new random latent codes, on a per-row basis.
+                The codes have already been preprocessed.
         """
         mean = self.latent_space_mean()
         std = self.latent_space_std()
@@ -64,7 +67,25 @@ class Generator(metaclass=abc.ABCMeta):
                 + "The implementation of this generator is faulty."
             )
 
-        return np.random.normal(loc=mean, scale=std, size=(n, std.shape[0]))
+        return self.preprocess_latent_code(
+            np.random.normal(loc=mean, scale=std, size=(n, std.shape[0]))
+        )
+
+    @abc.abstractmethod
+    def preprocess_latent_code(self, latent_codes: np.ndarray) -> np.ndarray:
+        """
+        Should perform preprocessing of `latent_codes` such that they may be used by
+        the `generate()` method.
+
+        Args:
+            latent_codes (np.ndarray): The latent codes to preprocess, specified
+                on a per-row basis. The values should be drawn from the distribution
+                described by `latent_space_std()` and `latent_space_mean()`.
+
+        Returns:
+            np.ndarray: Preprocessed latent codes, specified on a per-row basis.
+        """
+        pass
 
     @abc.abstractmethod
     def latent_space_std(self) -> np.ndarray:
@@ -96,7 +117,11 @@ class Generator(metaclass=abc.ABCMeta):
         allowing external generators to be launched in appropriate conda environments.
 
         Args:
-            latent_codes (np.ndarray): The latent codes to generate images for.
+            latent_codes (np.ndarray): The latent codes to generate images for. Make
+                sure that the codes have been properly preprocessed with
+                `preprocess_latent_code()` method. Note that `random_latent_code()`
+                performs preprocessing automatically, i.e., the output from that method
+                MUST NOT be processed again.
 
         Returns:
             list[str]: A list of URIs to the generate images, in the same order as the

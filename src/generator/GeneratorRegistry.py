@@ -1,4 +1,5 @@
 from src.generator.UNetGANGenerator import UNetGANGenerator, UNETGAN_NAME
+from src.generator.StyleGAN2ADAGenerator import StyleGAN2ADAGenerator, STYLEGAN2ADA_NAME
 from src.generator.Generator import Generator
 from typing import List
 from src.core.Registry import Registry
@@ -14,7 +15,10 @@ class GeneratorRegistry(Registry):
     to the internal storage (`_GENERATORS`) of this class.
     """
 
-    _GENERATORS = {UNETGAN_NAME: UNetGANGenerator}
+    _GENERATORS = {
+        UNETGAN_NAME: UNetGANGenerator,
+        STYLEGAN2ADA_NAME: StyleGAN2ADAGenerator,
+    }
 
     @staticmethod
     def get_names() -> List[str]:

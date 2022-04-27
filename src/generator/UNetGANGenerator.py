@@ -2,7 +2,7 @@ from src.generator.Generator import Generator
 from src.dataset.Dataset import Dataset
 import numpy as np
 from src.environment.EnvironmentManager import EnvironmentManager as em
-from typing import List
+from typing import List, Tuple
 from os import path
 
 UNETGAN_NAME = "unetgan"
@@ -40,6 +40,18 @@ class UNetGANGenerator(Generator):
         """
         return np.zeros(self._DIM_Z)
 
+    def preprocess_latent_code(self, latent_codes: np.ndarray) -> np.ndarray:
+        """
+        No preprocessing is needed. Returns the input.
+
+        Args:
+            latent_codes (np.ndarray): Forwarded to the return.
+
+        Returns:
+            np.ndarray: Forwarded input `latent_codes`.
+        """
+        return latent_codes
+
     def generate(self, latent_codes: np.ndarray) -> List[str]:
         """
         Generate images for the specified latent codes. This will most likely
@@ -48,10 +60,14 @@ class UNetGANGenerator(Generator):
 
         Args:
             latent_codes (np.ndarray): The latent codes to generate images for.
+                No preprocessing is required for the latent codes.
 
         Returns:
             list[str]: A list of URIs to the generate images, in the same order as the
                 specified latent code input.
+
+        Raises:
+            FileNotFoundError: If any of the expected image output files were not found.
         """
         # Send codes via socket
         em.send_latent_codes(latent_codes)
