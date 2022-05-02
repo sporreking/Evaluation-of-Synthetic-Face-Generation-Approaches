@@ -6,6 +6,7 @@ from typing import List
 from os import path
 
 import numpy as np
+from src.util.Interpolation import lerp
 
 STYLEGAN2ADA_NAME = "stylegan2ada"
 
@@ -107,3 +108,19 @@ class StyleGAN2ADAGenerator(Generator):
             raise FileNotFoundError("Could not find image(s) from Generator!")
         else:
             return uris
+
+    def interpolate(
+        self, start_latents: np.ndarray, end_latents: np.ndarray, t: np.ndarray
+    ) -> np.ndarray:
+        interpolated_latents = np.zeros(start_latents.shape)
+        for i in range(interpolated_latents.shape[0]):
+            interpolated_latents[i,] = lerp(
+                start_latents[
+                    i,
+                ],
+                end_latents[
+                    i,
+                ],
+                t[i],
+            )
+        return interpolated_latents
