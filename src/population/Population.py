@@ -16,7 +16,7 @@ class Population:
     # Static
     POPULATION_ROOT_DIR = Path("population/")
     POPULATION_DATA_FILE_NAME = "data.pkl"
-
+    POPULATION_METADATA_DIRECTORY_NAME = "metadata"
     _ATTRIB_START_INDEX = 4
 
     def __init__(self, name: str):
@@ -26,14 +26,33 @@ class Population:
 
         Args:
             name (str): The name of this population.
+
+        Raises:
+            FileNotFoundError: If file exists with the name 'metadata' in the root directory.
         """
         self._name = name
-        self._file_jar = FileJar(
-            Population.POPULATION_ROOT_DIR / name, create_root_dir=True
-        )
+        self._root_dir = Population.POPULATION_ROOT_DIR / name
+        self._metadata_dir = self._root_dir / "metadata"
+        self._file_jar = FileJar(self._root_dir, create_root_dir=True)
+        self._create_metadata_directory()
+
         self._data = self._file_jar.get_file(
             Population.POPULATION_DATA_FILE_NAME, pd.read_pickle
         )
+
+    def _create_metadata_directory(self) -> None:
+        # Check that metadata_dir is a directory.
+        if not self._metadata_dir.is_dir():
+            if not self._metadata_dir.exists():
+                self._metadata_dir.mkdir(parents=True)
+            elif self._metadata_dir.is_file():
+                raise FileNotFoundError(
+                    "File named 'metadata' is not allowed in the population directory."
+                )
+
+    def _clear_metadata(self) -> None:
+        # Remove all files in metadata directory
+        [f.unlink() for f in self._metadata_dir.glob("*") if f.is_file()]
 
     def _create_dataframe(self, attributes: list[str]) -> None:
         self._data = pd.DataFrame(
@@ -165,6 +184,8 @@ class Population:
         scenario should only occur if there is "junk" in the population directory, i.e., if there
         are old samples that should be replaced (`append=False`). Otherwise, something is wrong.
 
+        Note that all files in the metadata directory will be deleted.
+
         Args:
             latent_codes (np.ndarray): The latent codes used for generating the samples.
                 The codes are interpreted on a per-row basis.
@@ -248,6 +269,9 @@ class Population:
             axis=0,
         )
 
+        # Clear old metadata
+        self._clear_metadata()
+
         # Save to disk if applicable
         if save_to_disk:
             self._save_to_disk()
@@ -282,6 +306,8 @@ class Population:
         replaced if `append=False`. If `append=True`, an exception will be raised instead. This
         scenario should only occur if there is "junk" in the population directory, i.e., if there
         are old samples that should be replaced (`append=False`). Otherwise, something is wrong.
+
+        Note that all files in the metadata directory will be deleted.
 
         Args:
             latent_code (np.ndarray): The latent code used for generating this sample.
@@ -349,6 +375,9 @@ class Population:
             ignore_index=False,
             axis=0,
         )
+
+        # Clear old metadata
+        self._clear_metadata()
 
         # Save to disk if applicable
         if save_to_disk:
