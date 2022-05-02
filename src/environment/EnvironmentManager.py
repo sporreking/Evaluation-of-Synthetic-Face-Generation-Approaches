@@ -6,6 +6,7 @@ import struct
 import numpy as np
 import threading
 
+SOCKET_CHUNK_SIZE = 256 * 1024
 DEFAULT_LATENT_CODE_PORT = 6969
 
 
@@ -129,6 +130,7 @@ def _latent_code_agent(latent_codes: np.ndarray) -> None:
     # Setup socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, SOCKET_CHUNK_SIZE)
     s.bind(("localhost", DEFAULT_LATENT_CODE_PORT))
     s.listen(1)
 
