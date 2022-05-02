@@ -1,5 +1,6 @@
 from src.generator.UNetGANGenerator import UNetGANGenerator, UNETGAN_NAME
 from src.generator.StyleGAN2ADAGenerator import StyleGAN2ADAGenerator, STYLEGAN2ADA_NAME
+from src.generator.StyleSwinGenerator import StyleSwinGenerator, STYLESWIN_NAME
 from src.generator.Generator import Generator
 from typing import List
 from src.core.Registry import Registry
@@ -18,6 +19,7 @@ class GeneratorRegistry(Registry):
     _GENERATORS = {
         UNETGAN_NAME: UNetGANGenerator,
         STYLEGAN2ADA_NAME: StyleGAN2ADAGenerator,
+        STYLESWIN_NAME: StyleSwinGenerator,
     }
 
     @staticmethod
