@@ -4,6 +4,7 @@ import numpy as np
 from src.environment.EnvironmentManager import EnvironmentManager as em
 from typing import List, Tuple
 from os import path
+from src.util.Interpolation import slerp
 
 UNETGAN_NAME = "unetgan"
 
@@ -87,3 +88,19 @@ class UNetGANGenerator(Generator):
             raise FileNotFoundError("Could not find image(s) from Generator!")
         else:
             return uris
+
+    def interpolate(
+        self, start_latents: np.ndarray, end_latents: np.ndarray, t: np.ndarray
+    ) -> np.ndarray:
+        interpolated_latents = np.zeros(start_latents.shape)
+        for i in range(interpolated_latents.shape[0]):
+            interpolated_latents[i,] = slerp(
+                start_latents[
+                    i,
+                ],
+                end_latents[
+                    i,
+                ],
+                t[i],
+            )
+        return interpolated_latents

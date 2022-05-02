@@ -128,3 +128,26 @@ class Generator(metaclass=abc.ABCMeta):
                 specified latent code input.
         """
         pass
+
+    @abc.abstractmethod
+    def interpolate(
+        self, start_latents: np.ndarray, end_latents: np.ndarray, t: float
+    ) -> np.ndarray:
+        """
+        Should return the interpolated latent codes between latent codes (`start_latents`,`end_latents`)
+        with interpolation parameter `t`.
+
+        For example: `interpolate(a,b,[0]) = a` and `interpolate(a,b,[1]) = b`.
+
+        Args:
+            start_latent (np.ndarray): 2-dim array containing a latent code.
+                With shape (number of codes, length of a code).
+            end_latent (np.ndarray): 2-dim array containing a latent code.
+                With shape (number of codes, length of a code).
+            t (np.ndarray): Array of step-size float values where each value is a float in range of
+                [0,1]. Number of floats should be the same as number of codes.
+
+        Returns:
+            np.ndarray: The latent code result from the interpolation.
+        """
+        pass
