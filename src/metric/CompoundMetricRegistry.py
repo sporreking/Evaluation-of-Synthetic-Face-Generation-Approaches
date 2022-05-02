@@ -1,6 +1,7 @@
 from src.metric.CompoundMetric import CompoundMetric
 from src.core.Registry import Registry
 from src.metric.FIDCompoundMetric import FIDCompoundMetric, FID_NAME
+from src.metric.LSCompoundMetric import LSCompoundMetric, LS_NAME
 
 
 class CompoundMetricRegistry(Registry):
@@ -13,7 +14,7 @@ class CompoundMetricRegistry(Registry):
     to the internal storage (`_COMPOUND_METRICS`) of this class.
     """
 
-    _COMPOUND_METRICS = {FID_NAME: FIDCompoundMetric}
+    _COMPOUND_METRICS = {FID_NAME: FIDCompoundMetric, LS_NAME: LSCompoundMetric}
 
     @staticmethod
     def get_names() -> list[str]:
