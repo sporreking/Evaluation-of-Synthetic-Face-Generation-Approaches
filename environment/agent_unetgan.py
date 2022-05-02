@@ -197,11 +197,9 @@ def sample_generator(G, config: dict, z: torch.Tensor) -> None:
     z_batches = torch.split(z, config["batch_size"])
     n_batches = len(z_batches)
 
-    print(f"Generating {n} images in {n_batches} batches.")
     start_id = 0
     with torch.no_grad():
-        for i, z_batch in enumerate(z_batches):
-            print(f"Generating batch {i+1}/{n_batches}.")
+        for z_batch in tqdm(z_batches, desc="Generating images"):
             curr_batch_size = z_batch.size()[0]
 
             # Sample the generator
