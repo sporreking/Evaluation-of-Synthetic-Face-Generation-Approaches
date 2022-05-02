@@ -440,7 +440,7 @@ class ASADController(Controller):
         Returns:
             nn.Sequential: The classifier.
         """
-        cls_name = self._get_model_name(attr, classifier=True)
+        cls_name = self.get_model_name(attr, classifier=True)
         if self._classifier_exists(attr):
             # Load classifier
             return self._load_classifier(cls_name)
