@@ -26,6 +26,7 @@ SVC_PREFIX = "SVC"
 SVC_DIR = Path() / "auxiliary"
 SVC_FILE_EXT = ".joblib"
 LABELS_EXT = ".npy"
+LABELS_DIR = Population.POPULATION_METADATA_DIRECTORY_NAME + "/"
 
 # Model constans
 MIN_TRAIN_SIZE = 500000  # 500k used in interfacegan paper, 200k in styleganpaper
@@ -201,7 +202,11 @@ def setup_auxillary(
 
 
 def setup_labels(
-    controller: Controller, attr: str, batch_size: int = 64, epochs: int = 40
+    controller: Controller,
+    attr: str,
+    batch_size: int = 64,
+    epochs: int = 40,
+    pop_name: str = None,
 ) -> None:
     """
     Setup `attr`-labels given a auxiliary classifier (Will train one if missing.)
@@ -222,6 +227,8 @@ def setup_labels(
         batch_size (int,optional): Batch size used for predicting labels with classifier.
             (also used for training classifier if needed.) Defaults to 64.
         epochs (int,optional): Number of epochs used to train the classifier if needed. Defaults to 40.
+        pop_name (str, optional): Name of the population to setup labels for. Defaults to None.
+            If None, population name will be inferred from the controller.
     """
     # Get classifier, train classifier if necessary
     #! classifier borrowed from ASADController
@@ -232,11 +239,15 @@ def setup_labels(
     cls_model = asad.get_classifier(attr, batch_size=batch_size, epochs=epochs)
 
     # Init population
-    pop = Population(
-        get_population_name(
-            controller.get_generator().get_name(), controller.get_name()
+    if pop_name is None:
+        pop = Population(
+            get_population_name(
+                controller.get_generator().get_name(), controller.get_name()
+            )
         )
-    )
+    else:
+        pop = Population(pop_name)
+
     n = pop.num_samples()
 
     # Loads classifier to GPU
@@ -273,7 +284,10 @@ def setup_labels(
 
     # Save labels
     file_jar = FileJar(Population.POPULATION_ROOT_DIR / pop.get_name())
-    file_jar.store_file(attr + LABELS_EXT, lambda p: np.save(p, labels))
+    file_jar.store_file(
+        LABELS_DIR + attr + LABELS_EXT,
+        lambda p: np.save(p, labels),
+    )
 
 
 def is_labels_ready(attr: str, pop_name: str) -> bool:
@@ -287,9 +301,22 @@ def is_labels_ready(attr: str, pop_name: str) -> bool:
     Returns:
         bool: True if ready.
     """
-    # Get labels
+    return get_labels(attr, pop_name) is not None
+
+
+def get_labels(attr: str, pop_name: str) -> Union[None, np.ndarray]:
+    """
+    Gets the labels.
+
+    Args:
+        attr (str): Attribute to check labels for.
+        pop_name (str): Population to check labels for.
+
+    Returns:
+        bool: True if ready.
+    """
     file_jar = FileJar(Population.POPULATION_ROOT_DIR / pop_name)
-    return file_jar.get_file(attr + LABELS_EXT, np.load) is not None
+    return file_jar.get_file(LABELS_DIR + attr + LABELS_EXT, np.load)
 
 
 def train_svc(controller: Controller, attr: str) -> SVC:
@@ -314,8 +341,7 @@ def train_svc(controller: Controller, attr: str) -> SVC:
     latent_codes = np.stack(pop_data["latent_code"].to_numpy())
 
     # Get labels
-    file_jar = FileJar(Population.POPULATION_ROOT_DIR / pop.get_name())
-    labels = file_jar.get_file(attr + LABELS_EXT, np.load)
+    labels = get_labels(attr, pop.get_name())
 
     # Fit svc to data
     return _fit_svc(
