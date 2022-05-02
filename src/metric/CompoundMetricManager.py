@@ -5,6 +5,7 @@ from src.metric.SampleMetricManager import SampleMetricManager
 from src.population.Population import Population
 from src.dataset.Dataset import Dataset
 from src.util.FileJar import FileJar
+from src.controller.Controller import Controller
 from typing import Union, Any, Type
 import pandas as pd
 import numpy as np
@@ -21,6 +22,7 @@ class CompoundMetricManager:
         population: Population,
         dataset: Dataset,
         smm: SampleMetricManager,
+        controller: Controller,
     ):
         """
         Constructs a new CompoundMetricManager for handling the specified metrics
@@ -37,6 +39,7 @@ class CompoundMetricManager:
                 metrics to derive their results.
             population (Population): The population on which the metrics should be applied.
             smm (SampleMetricManager): Used for calculating per-sample metrics.
+            controller (Controller): The controller associated with the population.
 
         Raises:
             ValueError: If any of the items passed to `metrics` is not
@@ -50,6 +53,7 @@ class CompoundMetricManager:
         self._dataset = dataset
         self._population = population
         self._smm = smm
+        self._controller = controller
 
         # Construct metrics
         compound_metrics_con = [metric(self, smm) for metric in compound_metrics]
@@ -84,7 +88,7 @@ class CompoundMetricManager:
         one instance for each metric type specified upon manager construction.
 
         Returns:
-            list[CompoundMetricManager]: A list of all compound metric instances.
+            list[CompoundMetric]: A list of all compound metric instances.
         """
         return list(self._compound_metrics.values())
 
@@ -97,6 +101,15 @@ class CompoundMetricManager:
             Population: The population of this manager.
         """
         return self._population
+
+    def get_controller(self) -> Controller:
+        """
+        Returns the controller associated with this manager.
+
+        Returns:
+            Controller: The controller of this manager.
+        """
+        return self._controller
 
     def get_dataset(self) -> Dataset:
         """

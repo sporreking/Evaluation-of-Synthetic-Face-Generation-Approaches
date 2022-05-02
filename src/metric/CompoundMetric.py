@@ -27,6 +27,7 @@ class CompoundMetric(Setupable, metaclass=abc.ABCMeta):
         self._population = compound_metric_manager.get_population()
         self._name = name
         self._smm = smm
+        self._cmm = compound_metric_manager
         pass
 
     def get_dataset(self) -> Dataset:
