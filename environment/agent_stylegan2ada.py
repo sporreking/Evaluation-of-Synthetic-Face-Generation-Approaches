@@ -8,6 +8,7 @@ import torch
 from PIL import Image
 import numpy as np
 from argparse import ArgumentParser
+from tqdm import tqdm
 
 from latent_code_receiver import receive_latent_codes
 
@@ -126,8 +127,7 @@ def main():
     G = get_generator()
 
     # Generate images
-    print("Generating images...")
-    for i in range(latent_codes.shape[0]):
+    for i in tqdm(range(latent_codes.shape[0]), desc="Generating images"):
         img = G(CU.to_device(latent_codes[i : i + 1, :], device))
         img = (img.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8)
         Image.fromarray(img[0].cpu().numpy(), "RGB").save(f"{OUT_DIR}/{i}.png")
