@@ -87,7 +87,7 @@ class Controller(Setupable, metaclass=abc.ABCMeta):
 
         # Reshape and create dict
         arr = np.array(columns).T
-        return {attr: arr[i, :].reshape(n) for attr in enumerate(self._attrs)}
+        return {attr: arr[i, :].reshape(n) for i, attr in enumerate(self._attrs)}
 
     @abc.abstractmethod
     def parse_native_input(self, input: Dict[str, np.ndarray]) -> np.ndarray:
