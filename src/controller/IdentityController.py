@@ -16,12 +16,13 @@ class IdentityController(Controller):
     the generator.
     """
 
-    def __init__(self, gen: Generator):
+    def __init__(self, gen: Generator, attributes: list[str] = None):
         """
-        Constructor to the IdentityController
+        Constructs a new IdentityController
 
         Args:
             gen (Generator): The generator associated with the controller.
+            attributes (list[str], optional): Not used. Default is None.
 
         """
         super().__init__(IDENTITY_NAME, gen)

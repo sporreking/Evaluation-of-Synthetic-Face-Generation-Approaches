@@ -41,7 +41,7 @@ class Controller(Setupable, metaclass=abc.ABCMeta):
         """
         return self._name
 
-    def get_generator(self) -> str:
+    def get_generator(self) -> Generator:
         """
         Returns the generator of this controller.
 
