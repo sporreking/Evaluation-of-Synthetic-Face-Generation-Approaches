@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 
 os.environ["MKL_THREADING_LAYER"] = "GNU"
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 import torch
 from PIL import Image
@@ -42,7 +43,7 @@ parser.add_argument(
     "--noise_mode", type=str, choices=["const", "random", "none"], default="const"
 )
 
-ARGS = parser.parse_args()
+ARGS = parser.parse_args(sys.argv[1:] if __name__ == "__main__" else [])
 LAUNCH_MODE = ARGS.mode
 
 
