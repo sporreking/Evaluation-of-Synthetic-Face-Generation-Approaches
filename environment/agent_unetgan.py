@@ -15,15 +15,10 @@
 
 
 import os
-from tkinter import Y
-import argparse
 import sys
 from pathlib import Path
-import numpy as np
-import math
 from tqdm import tqdm
 import torch
-import torch.nn as nn
 import torchvision
 import time as time
 from latent_code_receiver import receive_latent_codes
@@ -161,9 +156,9 @@ def load_generator(config: dict):
         G_ema = model.Generator(**{**config, "skip_init": True, "no_optim": True}).to(
             device
         )
-        ema = utils.ema(G, G_ema, config["ema_decay"], config["ema_start"])
+        utils.ema(G, G_ema, config["ema_decay"], config["ema_start"])
     else:
-        G_ema, ema = None, None
+        G_ema = None
 
     # If loading from a pre-trained model, load weights
     try:
@@ -193,9 +188,7 @@ def sample_generator(G, config: dict, z: torch.Tensor) -> None:
     torch.cuda.empty_cache()
 
     # Setup batches
-    n = z.size()[0]
     z_batches = torch.split(z, config["batch_size"])
-    n_batches = len(z_batches)
 
     start_id = 0
     with torch.no_grad():
