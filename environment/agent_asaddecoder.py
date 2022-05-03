@@ -59,6 +59,9 @@ def main():
     elif config["generator_name"] == "stylegan2ada":
         from environment.agent_stylegan2ada import get_generator
         from src.generator.StyleGAN2ADAGenerator import StyleGAN2ADAGenerator as Gen
+    elif config["generator_name"] == "styleswin":
+        from environment.agent_styleswin import get_generator
+        from src.generator.StyleSwinGenerator import StyleSwinGenerator as Gen
 
     # Get generator
     G = get_generator()
@@ -140,10 +143,20 @@ def _fit_decoder(
 
     # Start training loop
     for epoch in range(config["epochs"]):
+
+        # Create latent seed codes
+        print(f"Generating latent seed codes for epoch {epoch}...")
+        all_codes = gen.random_latent_code(n_batches * config["batch_size"]).astype(
+            "float32"
+        )
+        print(f"Successfully generated {all_codes.shape[0]} latent seed codes!")
+
         avg_loss = 0
         for batch_nr in tqdm(range(n_batches)):
-            # Create seed latent codes
-            codes = gen.random_latent_code(config["batch_size"]).astype("float32")
+            # Get batch
+            codes = all_codes[
+                batch_nr * config["batch_size"] : (batch_nr + 1) * config["batch_size"]
+            ]
 
             # Send data to GPU
             codes = CU.to_device(torch.from_numpy(codes), device)

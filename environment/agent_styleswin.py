@@ -26,7 +26,7 @@ from models.generator import Generator
 parser = ArgumentParser()
 parser.add_argument("--batch_size", type=int, default=4)
 
-ARGS = parser.parse_args()
+ARGS = parser.parse_args(sys.argv[1:] if __name__ == "__main__" else [])
 
 
 # * Constants
@@ -59,26 +59,12 @@ def main():
     OUT_DIR.mkdir(exist_ok=True)
 
     # Create generator
-    generator = CU.to_device(
-        Generator(
-            256,
-            LATENT_CODE_LENGTH,
-            8,
-            channel_multiplier=G_CHANNEL_MULTIPLIER,
-            lr_mlp=LR_MLP,
-            enable_full_resolution=ENABLE_FULL_RESOLUTION,
-            use_checkpoint=False,
-        ),
-        device,
-    )
+    generator = _load_generator()
 
     # Load pretrained state
     ckpt = torch.load(str(PRETRAIN_DIR), map_location="cpu")
     generator.load_state_dict(ckpt["g_ema" if USE_G_EMA else "g"])
     del ckpt
-
-    # Set to evaluation mode
-    generator.eval()
 
     # Generate images
     with torch.no_grad():
@@ -113,6 +99,27 @@ def tensor_transform_reverse(image):
     moco_input[:, 1, :, :] = image[:, 1, :, :] * 0.224 + 0.456
     moco_input[:, 2, :, :] = image[:, 2, :, :] * 0.225 + 0.406
     return moco_input
+
+
+def _load_generator():
+    return CU.to_device(
+        Generator(
+            256,
+            LATENT_CODE_LENGTH,
+            8,
+            channel_multiplier=G_CHANNEL_MULTIPLIER,
+            lr_mlp=LR_MLP,
+            enable_full_resolution=ENABLE_FULL_RESOLUTION,
+            use_checkpoint=False,
+        ),
+        device,
+    ).eval()
+
+
+# * For use by ASAD
+def get_generator():
+    G = _load_generator()
+    return lambda z: G(z)[0].contiguous()
 
 
 if __name__ == "__main__":
