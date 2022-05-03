@@ -89,29 +89,31 @@ def main():
         print("Projecting latent codes from Z to W...")
         n_lc = latent_codes.shape[0]
         w = np.zeros((n_lc, LATENT_CODE_LENGTH))
-        for i in range(int(np.ceil(n_lc / LATENT_CODES_PER_PROJECTION))):
-            w[
-                i * LATENT_CODES_PER_PROJECTION : (i + 1) * LATENT_CODES_PER_PROJECTION,
-                :,
-            ] = (
-                G.mapping(
-                    CU.to_device(
-                        latent_codes[
-                            i
-                            * LATENT_CODES_PER_PROJECTION : (i + 1)
-                            * LATENT_CODES_PER_PROJECTION,
-                            :,
-                        ],
-                        device,
-                    ),
-                    None,
-                    truncation_psi=TRUNCATION_PSI,
-                    truncation_cutoff=TRUNCATION_CUTOFF,
-                )[:, 0, :]
-                .cpu()
-                .detach()
-                .numpy()
-            )
+        with torch.no_grad():
+            for i in range(int(np.ceil(n_lc / LATENT_CODES_PER_PROJECTION))):
+                w[
+                    i
+                    * LATENT_CODES_PER_PROJECTION : (i + 1)
+                    * LATENT_CODES_PER_PROJECTION,
+                    :,
+                ] = (
+                    G.mapping(
+                        CU.to_device(
+                            latent_codes[
+                                i
+                                * LATENT_CODES_PER_PROJECTION : (i + 1)
+                                * LATENT_CODES_PER_PROJECTION,
+                                :,
+                            ],
+                            device,
+                        ),
+                        None,
+                        truncation_psi=TRUNCATION_PSI,
+                        truncation_cutoff=TRUNCATION_CUTOFF,
+                    )[:, 0, :]
+                    .cpu()
+                    .numpy()
+                )
         print(f"Successfully projected {n_lc} latent codes!")
 
         print(f"Saving to file '{OUT_W_FILE}'...")
@@ -127,10 +129,11 @@ def main():
     G = get_generator()
 
     # Generate images
-    for i in tqdm(range(latent_codes.shape[0]), desc="Generating images"):
-        img = G(CU.to_device(latent_codes[i : i + 1, :], device))
-        img = (img.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8)
-        Image.fromarray(img[0].cpu().numpy(), "RGB").save(f"{OUT_DIR}/{i}.png")
+    with torch.no_grad():
+        for i in tqdm(range(latent_codes.shape[0]), desc="Generating images"):
+            img = G(CU.to_device(latent_codes[i : i + 1, :], device))
+            img = (img.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8)
+            Image.fromarray(img[0].cpu().numpy(), "RGB").save(f"{OUT_DIR}/{i}.png")
 
     print(
         f"Successfully generated {latent_codes.shape[0]} images from requested latent codes!"
@@ -139,7 +142,7 @@ def main():
 
 def _load_generator():
     with dnnlib.util.open_url(NETWORK_PKL, cache_dir=str(PRETRAIN_DIR)) as f:
-        return legacy.load_network_pkl(f)["G_ema"]
+        return legacy.load_network_pkl(f)["G_ema"].eval()
 
 
 # * For use by ASAD
