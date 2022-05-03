@@ -17,6 +17,12 @@ class StyleGAN2ADAGenerator(Generator):
     _W_FILE = "w.npy"
 
     def __init__(self, dataset: Dataset):
+        """
+        Constructs a new StyleGAN2-ADA generator.
+
+        Args:
+            dataset (Dataset): The dataset to associate the generator with.
+        """
         super().__init__(STYLEGAN2ADA_NAME, dataset)
 
     def latent_space_std(self) -> np.ndarray:
