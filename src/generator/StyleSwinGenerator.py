@@ -4,7 +4,7 @@ from src.environment.EnvironmentManager import EnvironmentManager as EM
 
 from typing import List
 from os import path
-
+from src.util.Interpolation import slerp
 import numpy as np
 
 STYLESWIN_NAME = "styleswin"
@@ -76,3 +76,19 @@ class StyleSwinGenerator(Generator):
             raise FileNotFoundError("Could not find image(s) from Generator!")
         else:
             return uris
+
+    def interpolate(
+        self, start_latents: np.ndarray, end_latents: np.ndarray, t: np.ndarray
+    ) -> np.ndarray:
+        interpolated_latents = np.zeros(start_latents.shape)
+        for i in range(interpolated_latents.shape[0]):
+            interpolated_latents[i,] = slerp(
+                start_latents[
+                    i,
+                ],
+                end_latents[
+                    i,
+                ],
+                t[i],
+            )
+        return interpolated_latents
