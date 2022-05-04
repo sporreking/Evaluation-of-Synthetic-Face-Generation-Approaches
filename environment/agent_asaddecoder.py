@@ -35,6 +35,7 @@ def _get_config() -> dict:
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--iter_per_epoch", type=int)
     parser.add_argument("--batch_size", type=int)
+    parser.add_argument("--lambda_mse", type=int)
     return vars(parser.parse_args())
 
 
@@ -94,6 +95,7 @@ def _decoder_loss(
     codes: torch.Tensor,
     cls_model: Callable[[torch.Tensor], torch.Tensor],
     G: Callable[[torch.Tensor], torch.Tensor],
+    config: dict,
 ) -> torch.Tensor:
     # To avoid taking log of zero
     eps = 0.000001
@@ -105,8 +107,7 @@ def _decoder_loss(
     mse1 = torch.mean(torch.sum((G_minus_n - G(codes)) ** 2, sum_dim))
 
     # Take resolution into account to balance MSE vs classification loss
-    lambda_mse = 1 / 5000
-    lambda_mse_res = lambda_mse * (256 / G_minus_n.shape[-1]) ** 2
+    lambda_mse_res = ((256 / G_minus_n.shape[-1]) ** 2) / config["lambda_mse"]
 
     del G_minus_n
     torch.cuda.empty_cache()
@@ -213,7 +214,7 @@ def _train_decoder(
     control_vectors = model(codes)
 
     # Calc loss
-    loss = _decoder_loss(control_vectors, codes, cls_model, G)
+    loss = _decoder_loss(control_vectors, codes, cls_model, G, config)
 
     # Update weights
     loss.backward()
@@ -237,7 +238,7 @@ def _validate_decoder(
         control_vectors = model(codes)
 
         # Calc loss
-        loss = _decoder_loss(control_vectors, codes, cls_model, G)
+        loss = _decoder_loss(control_vectors, codes, cls_model, G, config)
     model.train()
     return loss.item()
 

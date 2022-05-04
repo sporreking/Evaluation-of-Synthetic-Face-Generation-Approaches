@@ -1,5 +1,4 @@
 from src.controller.Controller import Controller
-from src.dataset.Dataset import Dataset
 from src.dataset.TorchImageDataset import TorchImageDataset
 from src.generator.Generator import Generator
 import numpy as np
@@ -79,8 +78,8 @@ class ASADController(Controller):
             },
             **{
                 mn_dec(attr): SetupMode(
-                    lambda _, batch_size, epochs, iter_per_epoch, attr=attr: self._setup_decoder(
-                        attr, epochs, iter_per_epoch, batch_size
+                    lambda _, batch_size, epochs, iter_per_epoch, lambda_mse, attr=attr: self._setup_decoder(
+                        attr, epochs, iter_per_epoch, batch_size, lambda_mse
                     ),
                     lambda attr=attr: load_aux_best(mn_dec(attr, False)) is not None,
                     lambda attr=attr: self._setup_info_func(mn_dec(attr, False)),
@@ -88,7 +87,8 @@ class ASADController(Controller):
                     batch_size=3,
                     epochs=15,
                     iter_per_epoch=2000,
-                )
+                    lambda_mse=5000,  # MSE term gets divided by this value
+                )  # -> increasing lambda_mse means less emphasis on MSE part (contrary to the classification part of the loss)
                 for attr in self._attrs
             },
         }
@@ -391,6 +391,7 @@ class ASADController(Controller):
         epochs: int = 15,
         iter_per_epoch: int = 2000,
         batch_size: int = 3,
+        lambda_mse: int = 5000,
     ) -> None:
 
         # Define parameters
@@ -408,6 +409,7 @@ class ASADController(Controller):
             generator_name=gen_name,
             decoder_name=dec_name,
             classifier_name=cls_name,
+            lambda_mse=lambda_mse,
         ):
             raise RuntimeError(f"Agent failed! Could not train decoder '{dec_name}'.")
 
