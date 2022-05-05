@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Generator
+from typing import Any, Callable, Generator, Union
 
 
 class FileJar:
@@ -32,6 +32,19 @@ class FileJar:
                 raise FileNotFoundError(f"Directory {root_dir} not found!")
 
         self._root_dir = root_dir
+
+    def has_file(self, file: Union[str, Path]) -> bool:
+        """
+        Checks whether the specified `file` exists in the root
+        directory of this file jar or not.
+
+        Args:
+            file (Union[str, Path]): The file to look for.
+
+        Returns:
+            bool: `True` if the file exists, else `False`.
+        """
+        return self._root_dir / file in self.iterdir()
 
     def get_root_dir(self) -> Path:
         """
