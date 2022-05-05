@@ -3,6 +3,8 @@ from src.core.Registry import Registry
 from src.metric.FIDCompoundMetric import FIDCompoundMetric, FID_NAME
 from src.metric.LSCompoundMetric import LSCompoundMetric, LS_NAME
 from src.metric.PPLCompoundMetric import PPLCompoundMetric, PPL_NAME
+from src.metric.RecallCompoundMetric import RecallCompoundMetric, RECALL_NAME
+from src.metric.PrecisionCompoundMetric import PrecisionCompoundMetric, PRECISION_NAME
 
 
 class CompoundMetricRegistry(Registry):
@@ -19,6 +21,8 @@ class CompoundMetricRegistry(Registry):
         FID_NAME: FIDCompoundMetric,
         LS_NAME: LSCompoundMetric,
         PPL_NAME: PPLCompoundMetric,
+        PRECISION_NAME: PrecisionCompoundMetric,
+        RECALL_NAME: RecallCompoundMetric,
     }
 
     @staticmethod
