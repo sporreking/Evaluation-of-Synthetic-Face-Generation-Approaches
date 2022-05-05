@@ -17,6 +17,11 @@ class Population:
     POPULATION_ROOT_DIR = Path("population/")
     POPULATION_DATA_FILE_NAME = "data.pkl"
     POPULATION_METADATA_DIRECTORY_NAME = "metadata"
+
+    COLUMN_LATENT_CODE = "latent_code"
+    COLUMN_LATENT_SEED = "latent_seed"
+    COLUMN_URI = "uri"
+    COLUMN_FILTER_BITMAP = "filter_bitmap"
     _ATTRIB_START_INDEX = 4
 
     def __init__(self, name: str):
