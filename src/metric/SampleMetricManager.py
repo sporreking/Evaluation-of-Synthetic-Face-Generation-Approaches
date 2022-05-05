@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from typing import Any, Type, Union
 
 import pandas as pd
 import numpy as np
 
-from src.metric.SampleMetricDescription import SampleMetricDescription
+import src.metric.SampleMetric as SampleMetric
 from src.population.Population import Population
 from src.dataset.Dataset import Dataset
 
@@ -15,7 +17,7 @@ class SampleMetricManager:
 
     def __init__(
         self,
-        sample_metric_descriptions: list[Type],
+        sample_metrics: list[Type],
         population: Population,
         dataset: Dataset,
     ):
@@ -24,33 +26,40 @@ class SampleMetricManager:
         for the provided population.
 
         Args:
-            sample_metric_descriptions (list[Type]): SampleMetricDescriptions of the
-                metrics that this manager should support.
+            sample_metrics (list[Type]): SampleMetrics that this manager should support.
             population (Population): The population on which the metrics should be applied.
             dataset (Dataset): A dataset that may be used by the different
-                SampleMetricDescriptions to derive their results.
+                SampleMetrics to derive their results.
 
         Raises:
-            ValueError: If any of the items passed to `sample_metric_descriptions` is not
-                a valid SampleMetricDescription.
+            ValueError: If any of the items passed to `sample_metrics` is not
+                a valid SampleMetric.
         """
 
         # Input check
-        for c in sample_metric_descriptions:
-            if not issubclass(c, SampleMetricDescription):
-                raise ValueError(f"Not a SampleMetricDescription: '{c.__name__}'")
+        for c in sample_metrics:
+            if not issubclass(c, SampleMetric.SampleMetric):
+                raise ValueError(f"Not a SampleMetric: '{c.__name__}'")
 
         # Save members
         self._population = population
         self._dataset = dataset
 
         # Save descriptions
-        self._sample_metric_descriptions = {
-            smd.get_name(): smd for smd in sample_metric_descriptions
-        }
+        self._sample_metrics = {sm.get_name(): sm(self) for sm in sample_metrics}
 
         # Create storage
         self._metrics = pd.DataFrame(columns=self.get_metric_names())
+
+    def get_metric_instances(self) -> list[SampleMetric.SampleMetric]:
+        """
+        Returns a list of all sample metric instances. There should be exactly
+        one instance for each metric type specified upon manager construction.
+
+        Returns:
+            list[SampleMetric]: A list of all sample metric instances.
+        """
+        return list(self._sample_metrics.values())
 
     def get_population(self) -> Population:
         """
@@ -65,13 +74,14 @@ class SampleMetricManager:
     def get_dataset(self) -> Dataset:
         """
         Returns the dataset contained by this manager. This value
-        was assigned upon the manager's instantiation, and is passed
-        to each SampleMetricDescription upon calculation since some
-        of the metrics they describe require real data.
+        was assigned upon the manager's instantiation, and was passed
+        to each SampleMetric upon their creation since some of the
+        metrics may require real data.
 
         Returns:
             Dataset: The dataset contained by this manager.
         """
+        return self._dataset
 
     def get_metric_names(self) -> list[str]:
         """
@@ -80,7 +90,7 @@ class SampleMetricManager:
         Returns:
             list[str]: The names of all metrics contained by this manager.
         """
-        return list(self._sample_metric_descriptions.keys())
+        return list(self._sample_metrics.keys())
 
     def _parse_input(
         self,
@@ -159,7 +169,7 @@ class SampleMetricManager:
 
         Args:
             metric_names (Union[list[str], str], optional): The metrics to retrieve.
-                The manager must have been initialized with SampleMetricDescriptions
+                The manager must have been initialized with SampleMetrics
                 which the specified metric names match. If `None`, all metrics will be
                 retrieved for the specified IDs. Defaults to None.
             ids (Union[list[int], int], optional): The IDs of the population samples
@@ -170,7 +180,7 @@ class SampleMetricManager:
                 This is done through the `calc()` function. Defaults to False.
             **parameters (Any): Arbitrary parameters required by the metrics.
                 These are only used if `calc_if_missing=True`, and are all forwarded
-                to each requested metric's SampleMetricDescription upon calculation.
+                to each requested metric's SampleMetric upon calculation.
                 Note that if different metrics require parameters with the same name,
                 they may not have different values unless calls to `calc()` are
                 performed for the metrics separately.
@@ -226,7 +236,7 @@ class SampleMetricManager:
 
         Args:
             metric_names (Union[list[str], str], optional): The metrics to calculate.
-                The manager must have been initialized with SampleMetricDescriptions
+                The manager must have been initialized with SampleMetrics
                 which the specified metric names match. If `None`, all metrics will be
                 calculated for the specified IDs. Defaults to None.
             ids (Union[list[int], int], optional): The IDs of the population samples
@@ -234,7 +244,7 @@ class SampleMetricManager:
                 calculated for all samples in the population. Defaults to None.
             **parameters (Any): Arbitrary parameters required by the metrics.
                 All of these parameters are forwarded to each requested metric's
-                SampleMetricDescription. Note that if different metrics require parameters
+                SampleMetric. Note that if different metrics require parameters
                 with the same name, they may not have different values unless calls to
                 `calc()` are performed for the metrics separately.
 
@@ -252,32 +262,30 @@ class SampleMetricManager:
         metric_names, ids = self._parse_input(metric_names, ids, check_calc=False)
 
         # Fetch sample metric descriptions
-        smds = [
-            self._sample_metric_descriptions[metric_name]
-            for metric_name in metric_names
+        sms: list[SampleMetric.SampleMetric] = [
+            self._sample_metrics[metric_name] for metric_name in metric_names
         ]
 
-        # Get samples to calculate for
-        data = self._population.get_data(ids)
-
         # Calculate metrics
-        for smd in smds:
+        for sm in sms:
             # Derive metric for samples
-            result: np.ndarray = smd.calc(data, self._dataset, **parameters)
+            result: np.ndarray = sm.calc(ids, **parameters)
 
             # Check valid result type
             if not isinstance(result, np.ndarray):
                 raise ValueError(
-                    f"Calculation failed for metric '{smd.get_name()}'! Returned {result}."
+                    f"Calculation failed for metric '{sm.get_name()}'! Returned {result}."
                 )
 
             # Check valid result dimensions
             if result.shape[0] != len(ids):
                 raise ValueError(
-                    f"Calculation failed for metric '{smd.get_name()}'! First axis must "
+                    f"Calculation failed for metric '{sm.get_name()}'! First axis must "
                     + "contain exactly one result for each specified ID."
                 )
 
             # Store results
-            for i in range(len(data)):
-                self._metrics.loc[data.index[i], smd.get_name()] = result[i]
+            for i in range(len(result)):
+                self._metrics.loc[
+                    self._population.get_data(ids).index[i], sm.get_name()
+                ] = result[i]
