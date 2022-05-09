@@ -1,17 +1,21 @@
+from __future__ import annotations
 from src.dataset.Dataset import Dataset
 from src.metric.SampleMetricManager import SampleMetricManager
 from src.population.Population import Population
 from src.core.Setupable import Setupable
-import src.metric.CompoundMetricManager as CompoundMetricManager
+
 import abc
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.metric.CompoundMetricManager import CompoundMetricManager
 
 
 class CompoundMetric(Setupable, metaclass=abc.ABCMeta):
     def __init__(
         self,
         name: str,
-        compound_metric_manager: CompoundMetricManager.CompoundMetricManager,
+        compound_metric_manager: CompoundMetricManager,
         smm: SampleMetricManager = None,
     ):
         """

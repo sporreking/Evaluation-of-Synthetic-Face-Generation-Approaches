@@ -4,7 +4,7 @@ import src.metric.CompoundMetric as CompoundMetric
 from src.metric.CompoundMetric import CompoundMetric
 from src.metric.SampleMetricManager import SampleMetricManager
 from src.core.Setupable import SetupMode
-import src.metric.CompoundMetricManager as CompoundMetricManager
+from src.metric.CompoundMetricManager import CompoundMetricManager
 from typing import Any
 from src.controller.InterFaceGANController import (
     SETUP_POPULATION_NAME,
@@ -36,7 +36,7 @@ LS_NAME = "LinearSeparability"
 class LSCompoundMetric(CompoundMetric):
     def __init__(
         self,
-        cmm: CompoundMetricManager.CompoundMetricManager,
+        cmm: CompoundMetricManager,
         smm: SampleMetricManager = None,
     ):
         """

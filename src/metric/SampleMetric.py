@@ -1,17 +1,20 @@
+from __future__ import annotations
 import abc
 import pandas as pd
 import numpy as np
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from src.core.Setupable import Setupable
 from src.dataset.Dataset import Dataset
 from src.population.Population import Population
-import src.metric.SampleMetricManager as SampleMetricManager
+
+if TYPE_CHECKING:
+    from src.metric.SampleMetricManager import SampleMetricManager
 
 
 class SampleMetric(Setupable, metaclass=abc.ABCMeta):
-    def __init__(self, smm: SampleMetricManager.SampleMetricManager):
+    def __init__(self, smm: SampleMetricManager):
         """
         Constructs a new sample metric.
 

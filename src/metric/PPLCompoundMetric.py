@@ -10,7 +10,7 @@ https://github.com/NVlabs/stylegan2-ada-pytorch/blob/main/metrics/perceptual_pat
 from src.metric.CompoundMetric import CompoundMetric
 from src.metric.SampleMetricManager import SampleMetricManager
 from src.core.Setupable import SetupMode
-import src.metric.CompoundMetricManager as CompoundMetricManager
+from src.metric.CompoundMetricManager import CompoundMetricManager
 from typing import Any, Union
 import torch
 from urllib import request
@@ -61,7 +61,7 @@ EPS = 1e-4  # 1e-4 According to stylegan paper
 class PPLCompoundMetric(CompoundMetric):
     def __init__(
         self,
-        cmm: CompoundMetricManager.CompoundMetricManager,
+        cmm: CompoundMetricManager,
         smm: SampleMetricManager = None,
     ):
         """

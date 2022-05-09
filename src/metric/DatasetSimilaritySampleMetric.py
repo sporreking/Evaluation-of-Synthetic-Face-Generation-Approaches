@@ -1,5 +1,5 @@
 from src.metric.SampleMetric import SampleMetric
-import src.metric.SampleMetricManager as SampleMetricManager
+from src.metric.SampleMetricManager import SampleMetricManager
 from src.population.Population import Population
 import src.metric.MatchingScore as MS
 from src.core.Setupable import SetupMode
@@ -21,7 +21,7 @@ class DatasetSimilaritySampleMetric(SampleMetric):
     is most similar to that sample according to the Partial FC backbone.
     """
 
-    def __init__(self, smm: SampleMetricManager.SampleMetricManager):
+    def __init__(self, smm: SampleMetricManager):
         super().__init__(smm)
 
     @staticmethod
