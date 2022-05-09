@@ -9,7 +9,6 @@ from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 import numpy as np
 from pathlib import Path
-
 from typing import List, Tuple
 
 _DEFAULT_RES = 256
@@ -33,8 +32,8 @@ class FFHQDataset(Dataset):
     # Subdirectory name to the images
     DS_DIR_IMAGES = "image/"
 
-    # Subdirectory name to the labels
-    DS_DIR_LABELS = "label/"
+    # Path to labels directory
+    DS_LABEL_PATH = Dataset.DS_DIR_PREFIX / "FFHQ_LABELS" / "json"
 
     # Filename of the extracted labels
     DS_LABELS_NAME = "labels.pkl"
@@ -101,7 +100,7 @@ class FFHQDataset(Dataset):
 
     def init_files(self) -> Tuple[FileJar, pd.DataFrame]:
         """
-        Initilizes the label files related to the dataset.
+        Initializes the label files related to the dataset.
         Extract labels from the dataset and saves them with a
         FileJar as well as a pd.DataFrame.
 
@@ -145,15 +144,14 @@ class FFHQDataset(Dataset):
                 a pd.DataFrame containing labels.
         """
         # Loop through all json files, save all filenames
-        label_dir_path = self.get_path() / self.DS_DIR_LABELS
-        if label_dir_path.is_dir():
+        if self.DS_LABEL_PATH.is_dir():
             json_files = [
                 pos_json
-                for pos_json in os.listdir(label_dir_path)
+                for pos_json in os.listdir(self.DS_LABEL_PATH)
                 if pos_json.endswith(".json")
             ]
         else:
-            raise FileNotFoundError(f"Directory {label_dir_path} not found!")
+            raise FileNotFoundError(f"Directory {self.DS_LABEL_PATH} not found!")
 
         # Create iterable object for multprocesssing work
         iter = [(index, json_f) for index, json_f in enumerate(json_files)]
@@ -204,9 +202,7 @@ class FFHQDataset(Dataset):
         json_f = args[1]
 
         # Parse json
-        with open(
-            os.path.join(self.get_path() / self.DS_DIR_LABELS, json_f)
-        ) as json_file:
+        with open(os.path.join(self.DS_LABEL_PATH, json_f)) as json_file:
             json_obj = json.load(json_file)
             if not json_obj:
                 return []
