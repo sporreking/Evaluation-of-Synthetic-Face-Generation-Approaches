@@ -1,10 +1,15 @@
+from __future__ import annotations
 from pathlib import Path
 import pandas as pd
 import numpy as np
-
-from typing import Union
+from typing import Union, Type, TYPE_CHECKING
 
 from src.util.FileJar import FileJar
+from src.filter.Filter import Filter
+from src.filter.FilterRegistry import FilterRegistry
+
+if TYPE_CHECKING:
+    from src.metric.SampleMetricManager import SampleMetricManager
 
 
 class Population:
@@ -429,3 +434,43 @@ class Population:
             pd.DataFrame: The filtered samples.
         """
         return self._data[[(bm & mask) == mask for bm in self._data["filter_bitmap"]]]
+
+    def apply_filter(
+        self, filter: Type[Filter], smm: SampleMetricManager, save_to_disk: bool = True
+    ) -> None:
+        """
+        Apply a filter on this population and update
+        the bitmap accordingly.
+
+        Args:
+            filter (Type(Filter)): The filter to apply.
+            smm (SampleMetricManager): The sample manager used to apply the
+                filter. Population is inferred from the sample manager, which
+                must be the same population as this class.
+            save_to_disk (bool, optional): If `True`, the updated bitmap will be saved to disk.
+                Defaults to True.
+
+        Raises:
+            AssertionError: When this population does not match the population in the sample
+                metric manager specified by `smm`.
+        """
+        assert smm.get_population() is self
+
+        # Update bitmap for the passing samples
+        # Set filter bit to 1 in bitmap
+        bit = filter.get_bit(FilterRegistry)
+        ind = filter.apply(smm)
+        self._data[self.COLUMN_FILTER_BITMAP][ind] = self._data[
+            self.COLUMN_FILTER_BITMAP
+        ][ind].apply(lambda bitmap: bit | bitmap)
+
+        # Update bitmap for the non-passing samples
+        # Set filter bit to 0 in bitmap
+        fail_ind = self._data.index.difference(ind, sort=False)
+        self._data[self.COLUMN_FILTER_BITMAP][fail_ind] = self._data[
+            self.COLUMN_FILTER_BITMAP
+        ][fail_ind].apply(lambda bitmap: ~bit & bitmap)
+
+        if save_to_disk:
+            # Save result to disk
+            self._save_to_disk()
