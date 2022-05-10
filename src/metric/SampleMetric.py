@@ -70,8 +70,8 @@ class SampleMetric(Setupable, metaclass=abc.ABCMeta):
             **parameters (Any): Arbitrary metric parameters.
 
         Returns:
-            np.ndarray: One floating point score for each sample, i.e.,
-                the dimensions of the vector is equal to the number of
+            np.ndarray: One calculated value for each sample, i.e., the vector
+                should have a single axis with length equal to the number of
                 input samples.
         """
         pass

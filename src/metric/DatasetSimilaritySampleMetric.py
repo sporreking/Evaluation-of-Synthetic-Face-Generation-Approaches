@@ -57,6 +57,20 @@ class DatasetSimilaritySampleMetric(SampleMetric):
         }
 
     def calc(self, ids: pd.Index, **parameters: Any) -> np.ndarray:
+        """
+        Calculates the similarity between the specified samples and their closest
+        neighbor in the dataset.
+
+        Args:
+            ids (pd.Index): The indices of the samples to calculate for.
+
+        Returns:
+            np.ndarray: One similarity score per requested sample, defined as the
+                similarity betwen the sample in question and its closest neighbor
+                in the dataset, i.e., a one-dimensional vector of the same length
+                as `ids`.
+        """
+
         # Fetch samples to calculate for
         uris = list(self._population.get_data(ids)[Population.COLUMN_URI])
 
