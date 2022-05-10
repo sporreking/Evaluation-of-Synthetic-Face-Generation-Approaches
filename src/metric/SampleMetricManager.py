@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Type, Union
+from typing import Any, Type, Union, TYPE_CHECKING
 
 import pandas as pd
 import numpy as np
 
 import src.metric.SampleMetric as SampleMetric
-from src.population.Population import Population
+
+if TYPE_CHECKING:
+    from src.population.Population import Population
+
 from src.dataset.Dataset import Dataset
 
 
