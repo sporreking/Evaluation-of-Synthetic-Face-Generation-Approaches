@@ -299,7 +299,7 @@ class ASADController(Controller):
         val_losses = []
 
         # Create optimizers
-        opt = torch.optim.AdamW(model.parameters())
+        opt = torch.optim.AdamW(model.parameters(), lr=0.005)
 
         # Setup batches
         n_batches = len(train_dl)
