@@ -419,7 +419,7 @@ class Population:
         if indices is None:
             return self._data
         else:
-            return self._data.iloc[[indices] if type(indices) == int else indices]
+            return self._data.loc[[indices] if type(indices) == int else indices]
 
     def get_filtered_data(self, mask: int) -> pd.DataFrame:
         """
