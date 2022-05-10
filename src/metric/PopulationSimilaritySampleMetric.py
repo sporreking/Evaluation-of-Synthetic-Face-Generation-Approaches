@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+POPULATION_SIMILARITY_NAME = "PopulationSimilarity"
 
 class PopulationSimilaritySampleMetric(SampleMetric):
     """
@@ -27,7 +28,7 @@ class PopulationSimilaritySampleMetric(SampleMetric):
 
     @staticmethod
     def get_name() -> str:
-        return "PopulationSimilarity"
+        return POPULATION_SIMILARITY_NAME
 
     def reg_setup_modes(self) -> dict[str, SetupMode]:
         return {

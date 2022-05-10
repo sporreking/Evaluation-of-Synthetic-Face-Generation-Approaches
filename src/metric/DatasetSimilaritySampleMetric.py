@@ -10,6 +10,8 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+DATASET_SIMILARITY_NAME = "DatasetSimilarity"
+
 
 class DatasetSimilaritySampleMetric(SampleMetric):
     """
@@ -26,7 +28,7 @@ class DatasetSimilaritySampleMetric(SampleMetric):
 
     @staticmethod
     def get_name() -> str:
-        return "DatasetSimilarity"
+        return DATASET_SIMILARITY_NAME
 
     def reg_setup_modes(self) -> dict[str, SetupMode]:
         ds = self._dataset
