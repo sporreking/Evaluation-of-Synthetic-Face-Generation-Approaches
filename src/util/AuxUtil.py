@@ -101,7 +101,7 @@ def _full_name(name: str, epoch: int, batch: int) -> str:
 
 
 def _is_epoch_batch_format(name: str) -> bool:
-    return bool(re.match(r"^[A-Za-z0-9_]+_e[0-9]+_b[0-9]+\.pt$", name))
+    return bool(re.match(r"^[A-Za-z0-9_\.]+_e[0-9]+_b[0-9]+\.pt$", name))
 
 
 def _epoch_batch_from_full_name(full_name: str) -> Tuple[int, int]:
