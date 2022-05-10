@@ -8,6 +8,9 @@ class Registry(metaclass=abc.ABCMeta):
     of registries of resources (Datasets, Generators, Controllers etc).
     """
 
+    def __new__(cls):
+        raise RuntimeError(f"{cls.__name__} should not be instantiated.")
+
     @staticmethod
     @abc.abstractmethod
     def get_names() -> list[Union[str, Tuple]]:
