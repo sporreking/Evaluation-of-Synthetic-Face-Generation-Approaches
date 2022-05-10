@@ -18,6 +18,7 @@ import src.util.CudaUtil as CU
 import math
 from typing import Tuple, Union, Any
 import torch
+import time
 
 #! Setup function should be run in order:
 #! setup_population -> setup_auxillary -> setup_labels -> train_svc
@@ -365,9 +366,11 @@ def _fit_svc(latent_codes: np.ndarray, labels: np.ndarray, name: str) -> SVC:
     # Codes/labels filtering according to InterFaceGAN/Linear separability
     latent_codes, labels = _remove_uncertain_labels(latent_codes, labels)
 
-    svc = SVC(kernel="linear")
+    svc = SVC(kernel="linear", verbose=True)
     print("Training SVC...")
+    start = time.time()
     svc.fit(latent_codes, labels)
+    print(f"SVC training took {(time.time() - start)/60:.2f} minutes!")
     print("Training done!")
 
     # Save to disk
