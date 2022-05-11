@@ -140,7 +140,7 @@ class CompoundMetricManager:
         Retrieves the requested metrics.
 
         Note that if `calc_if_missing=True`, a call will be made to `calc()`.
-        More information about possible exceptions etc. may be be found in the
+        More information about possible exceptions, parameters etc. may be be found in the
         docstring of that function.
 
         Args:
@@ -190,6 +190,7 @@ class CompoundMetricManager:
     def calc(
         self,
         metric_names: Union[list[str], str] = None,
+        filter_bit: int = 1,
         **parameters: Any,
     ) -> None:
         """
@@ -200,6 +201,9 @@ class CompoundMetricManager:
                 The manager must have been initialized with CompoundMetrics
                 which the specified metric names match. If `None`, all metrics will be
                 calculated. Defaults to None.
+            filter_bit (int, optional): Filter bit used to select a subset of the
+                population. Filter bit is defined by the order in FilterRegistry. For example,
+                the first filter corresponds to filter bit 1. Defaults to 1 (IdentityFilter).
             **parameters (Any): Arbitrary parameters required by the metrics.
                 All of these parameters are forwarded to each requested metric's
                 CompoundMetric. Note that if different metrics require parameters
@@ -218,7 +222,7 @@ class CompoundMetricManager:
         # Calculate metrics
         for cm in cms:
             # Derive metric for samples
-            result = cm.calc(**parameters)
+            result = cm.calc(filter_bit=filter_bit, **parameters)
 
             # Store result
             self._metrics.loc[0, cm.get_name()] = result

@@ -4,7 +4,7 @@ import src.metric.CompoundMetric as CompoundMetric
 from src.metric.CompoundMetric import CompoundMetric
 from src.metric.SampleMetricManager import SampleMetricManager
 from src.core.Setupable import SetupMode
-from src.metric.CompoundMetricManager import CompoundMetricManager
+from src.metric.CompoundMetricManager import CompoundMetricManager, FILTER_BIT_NAME
 from typing import Any
 from src.controller.InterFaceGANController import (
     SETUP_POPULATION_NAME,
@@ -181,7 +181,19 @@ class LSCompoundMetric(CompoundMetric):
         svc = train_svc(self._cmm.get_controller(), attr)
         self._svcs[attr] = svc
 
-    def calc(self, **parameters: Any) -> Any:
+    def calc(self, filter_bit: int = 1, **parameters: Any) -> Any:
+        """
+        Calculates the linear separability (LS).
+
+        Args:
+            filter_bit (int, optional): Filter bit used to select a subset of the
+                population. Filter bit is defined by the order in FilterRegistry. For example,
+                the first filter corresponds to filter bit 1. Defaults to 1 (IdentityFilter).
+
+        Returns:
+            Any: LS of the population.
+        """
+
         def binary_conditional_entropy(X: np.ndarray, Y: np.ndarray):
             """
             Computes the (binary) conditional entropy H(Y|X).
@@ -214,7 +226,8 @@ class LSCompoundMetric(CompoundMetric):
         controller = self._cmm.get_controller()
 
         # Get the latent codes
-        latent_codes = np.stack(self._population.get_data()["latent_code"].to_numpy())
+        pop_data = self._population.get_filtered_data(filter_bit)
+        latent_codes = np.stack(pop_data["latent_code"].to_numpy())
 
         # QoL
         gen_name = controller._gen.get_name()
@@ -240,6 +253,10 @@ class LSCompoundMetric(CompoundMetric):
                     pop_name,
                 )
                 print("Labels done, continuing with SVC training.")
+
+            # Filter labels
+            filtered_indices = self._population.get_filtering_indices(filter_bit)
+            labels = labels[filtered_indices]
 
             # Get the svc
             if attr in self._svcs:

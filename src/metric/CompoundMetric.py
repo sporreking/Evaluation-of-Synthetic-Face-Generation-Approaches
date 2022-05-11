@@ -71,6 +71,9 @@ class CompoundMetric(Setupable, metaclass=abc.ABCMeta):
         Should calculate a compound metric for a set of samples.
 
         Args:
+            filter_bit (int, optional): Filter bit used to select a subset of the
+                population. Filter bit is defined by the order in FilterRegistry. For example,
+                the first filter corresponds to filter bit 1. Defaults to 1 (IdentityFilter).
             **parameters (Any): Arbitrary metric parameters.
 
         Returns:
@@ -82,6 +85,9 @@ class CompoundMetric(Setupable, metaclass=abc.ABCMeta):
     def get(self, calc_if_missing: bool = False, **parameters: Any) -> Any:
         """
         Get the metric.
+
+        Note that if `calc_if_missing` is True, then a `filter_bit` probably should be
+        specified, see documentation for `calc()`.
 
         Args:
             calc_if_missing (bool, optional): If True should calculate the metric if missing

@@ -433,7 +433,28 @@ class Population:
         Returns:
             pd.DataFrame: The filtered samples.
         """
-        return self._data[[(bm & mask) == mask for bm in self._data["filter_bitmap"]]]
+        return self._data[self.get_filtering_indices(mask)]
+
+    def get_filtering_indices(self, mask: int) -> list[bool]:
+        """
+        Returns a boolean list corresponding to the indices of the data in this population.
+        Filtering is done for the specified bitmap `mask`.
+
+        For example:
+
+        The boolean list `[True, False, True]` means that indices 0 and 2 have passed
+        the filter.
+
+        Args:
+            mask (int): A bitmap with '1' for all filters that the samples must pass.
+                The order of the bits are analogous to the order of filters
+                in the FilterRegistry
+
+        Returns:
+            list[bool]: The filtering indices as a boolean list, True if indices passed,
+                False otherwise.
+        """
+        return [(bm & mask) == mask for bm in self._data["filter_bitmap"]]
 
     def apply_filter(
         self, filter: Type[Filter], smm: SampleMetricManager, save_to_disk: bool = True
