@@ -21,7 +21,9 @@ class FilterRegistry(Registry):
     to the internal storage (`_FILTERS`) of this class.
     """
 
-    _FILTERS = {IDENTITY_FILTER_NAME: IdentityFilter}
+    _FILTERS = {  #! IdentityFilter must be the first entry in this list - do not change its location
+        IDENTITY_FILTER_NAME: IdentityFilter
+    }
 
     @staticmethod
     def get_names() -> list[str]:

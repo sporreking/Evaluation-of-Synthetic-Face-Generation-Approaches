@@ -52,11 +52,14 @@ class RecallCompoundMetric(CompoundMetric):
             )
         }
 
-    def calc(self, **parameters: Any) -> Any:
+    def calc(self, filter_bit: int = 1, **parameters: Any) -> Any:
         """
         Calculates the recall of this compound metric's population.
 
         Args:
+            filter_bit (int, optional): Filter bit used to select a subset of the
+                population. Filter bit is defined by the order in FilterRegistry. For example,
+                the first filter corresponds to filter bit 1. Defaults to 1 (IdentityFilter).
             batch_size (int, optional): The batch size to use when projecting images
                 through the VGG16-network on the GPU. Defaults to `BATCH_SIZE`.
             dist_calc_batch_size (int, optional): The batch size to use when calculating
@@ -88,8 +91,9 @@ class RecallCompoundMetric(CompoundMetric):
         assert dist_calc_batch_size > 0
 
         # Calculate recall
+        pop_data = self._pop.get_filtered_data(filter_bit)
         self._recall = self._ipr.calc_recall(
-            self._pop.get_data()[self._pop.COLUMN_URI].values.tolist(),
+            pop_data[self._pop.COLUMN_URI].values.tolist(),
             batch_size,
             dist_calc_batch_size,
         )

@@ -6,11 +6,12 @@ from typing import Any
 from cleanfid import fid
 from src.population.Population import Population
 from src.dataset.FFHQDataset import FFHQDataset
+import numpy as np
+from pathlib import Path
 
 FID_NAME = "FID"
 FID_CALC_MODES = ["clean", "legacy_tensorflow", "legacy_pytorch"]
 FID_DEFAULT_CALC_MODE = "clean"
-
 
 # TODO: Fix this:
 #! Only works when equal to zero, gets pickle error otherwise
@@ -105,7 +106,43 @@ class FIDCompoundMetric(CompoundMetric):
         else:
             return fid.test_stats_exists(ds.get_name(), calc_mode)
 
-    def calc(self, **parameters: Any) -> Any:
+    def _move_filtered_files(self, source_files: list[Path]) -> Path:
+        # Look for temp name not taken
+        while True:
+            target = (
+                Population.POPULATION_ROOT_DIR
+                / f"temp_filtered_population{np.random.randint(10000,99999)}"
+            )
+            if not (target.is_file() or target.is_dir()):
+                break
+
+        # Create temp directory
+        Path.mkdir(target)
+
+        # Move filtered files to temp directory
+        for image_file in source_files:
+            image_file.rename(target.joinpath(image_file.name))
+
+        return target
+
+    def _move_filtered_files_back(self, source: Path) -> None:
+        target = Population.POPULATION_ROOT_DIR / self.get_population().get_name()
+        # Check if source file exists
+        if not source.exists():
+            raise FileNotFoundError(f"Could not find file: '{source.absolute()}'")
+
+        # Check if target file exists
+        if not target.exists():
+            raise FileNotFoundError(f"Could not find file: '{target.absolute()}'")
+
+        # Move filtered files back to population directory
+        for image_file in source.glob("*"):
+            image_file.rename(target.joinpath(image_file.name))
+
+        # Remove temp directory
+        source.rmdir()
+
+    def calc(self, filter_bit: int = 1, **parameters: Any) -> Any:
         """
         Calculates the FID given the dataset and the population.
 
@@ -113,6 +150,9 @@ class FIDCompoundMetric(CompoundMetric):
         requires the user to run `setup()` first.
 
         Args:
+            filter_bit (int, optional): Filter bit used to select a subset of the
+                population. Filter bit is defined by the order in FilterRegistry. For example,
+                the first filter corresponds to filter bit 1. EDefaults to 1 (IdentityFilter).
             calc_mode (str, optional): Either "clean", "legacy_tensorflow, or "legacy_pytorch".
                 This decides how the FID score should be calculated, i.e., using clean-fid,
                 regular tensorflow implementation, or pytorch implementation. Default is "clean" (clean-fid).
@@ -120,18 +160,23 @@ class FIDCompoundMetric(CompoundMetric):
             ValueError: Error when non-valid `calc_mode`, valid modes are defined by `FID_CALC_MODES`.
             ValueError: Error when the name of the dataset in conjunction with the
                 specified `calc_mode` don't have a pre-computed statistic.
-
+            RuntimeError: When clean-fid library gets an error.
+            FileNotFoundError: When incorrect path is provided when moving files.
         Returns:
             Any: The FID value.
         """
         # Fetch parameters
         calc_mode = self._check_calc_mode(parameters)
 
+        # Move files to temp folder
+        uris = self._population.get_filtered_data(filter_bit)[
+            self._population.COLUMN_URI
+        ]
+        uris = [Path(str_path) for str_path in list(uris)]
+        pop_path = self._move_filtered_files(uris)
+
         # Get variables for use in FID
         ds = self.get_dataset()
-        pop_path = str(
-            Population.POPULATION_ROOT_DIR / self.get_population().get_name()
-        )
         resolution = ds.get_resolution()
         fid_score = None
 
@@ -139,32 +184,51 @@ class FIDCompoundMetric(CompoundMetric):
             ds.get_resolution() == 256 or ds.get_resolution() == 1024
         ):
             # Use pre-computed statistic by clean-fid
-            fid_score = fid.compute_fid(
-                pop_path,
-                dataset_name=type(ds).get_resolution_invariant_name(),
-                dataset_res=resolution,
-                mode=calc_mode,
-                dataset_split="trainval70k",
-                num_workers=NUM_WORKERS,
-            )
+            try:
+                fid_score = fid.compute_fid(
+                    str(pop_path),
+                    dataset_name=type(ds).get_resolution_invariant_name(),
+                    dataset_res=resolution,
+                    mode=calc_mode,
+                    dataset_split="trainval70k",
+                    num_workers=NUM_WORKERS,
+                )
+            except Exception as error:
+                self._move_filtered_files_back(pop_path)
+                print("Something went when calculating FID using clean-fid.")
+                print(repr(error))
+                raise
         else:
             # Use custom pre-computed statistic
             dataset_name = ds.get_name(resolution)
 
             # Check if statistic exists
             if fid.test_stats_exists(dataset_name, calc_mode):
-                fid_score = fid.compute_fid(
-                    pop_path,
-                    dataset_name=dataset_name,
-                    mode=calc_mode,
-                    dataset_split="custom",
-                    num_workers=NUM_WORKERS,
-                )
+                try:
+                    fid_score = fid.compute_fid(
+                        str(pop_path),
+                        dataset_name=dataset_name,
+                        mode=calc_mode,
+                        dataset_split="custom",
+                        num_workers=NUM_WORKERS,
+                    )
+                except Exception as error:
+                    # Move back files
+                    self._move_filtered_files_back(pop_path)
+                    print("Something went when calculating FID using clean-fid.")
+                    print(repr(error))
+                    raise
+
             else:
+                # Move back files
+                self._move_filtered_files_back(pop_path)
                 raise ValueError(
                     f"Statistic named '{dataset_name}' with `calc_mode` '{calc_mode}'"
                     " has no statistic. Double check `calc_mode` or run 'setup()'"
                 )
+
+        # Move back files
+        self._move_filtered_files_back(pop_path)
 
         # Save result
         self._fid[calc_mode] = fid_score

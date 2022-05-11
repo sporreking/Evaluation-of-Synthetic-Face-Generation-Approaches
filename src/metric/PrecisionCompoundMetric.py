@@ -52,11 +52,14 @@ class PrecisionCompoundMetric(CompoundMetric):
             )
         }
 
-    def calc(self, **parameters: Any) -> Any:
+    def calc(self, filter_bit: int = 1, **parameters: Any) -> Any:
         """
         Calculates the precision of this compound metric's population.
 
         Args:
+            filter_bit (int, optional): Filter bit used to select a subset of the
+                population. Filter bit is defined by the order in FilterRegistry. For example,
+                the first filter corresponds to filter bit 1. Defaults to 1 (IdentityFilter).
             batch_size (int, optional): The batch size to use when projecting images
                 through the VGG16-network on the GPU. Defaults to `BATCH_SIZE`.
             dist_calc_batch_size (int, optional): The batch size to use when calculating
@@ -70,6 +73,7 @@ class PrecisionCompoundMetric(CompoundMetric):
         assert self._ipr.check_precalculated_manifold()
 
         # Fetch parameters
+
         batch_size = (
             parameters[BATCH_SIZE_NAME] if BATCH_SIZE_NAME in parameters else BATCH_SIZE
         )
@@ -88,8 +92,9 @@ class PrecisionCompoundMetric(CompoundMetric):
         assert dist_calc_batch_size > 0
 
         # Calculate precision
+        pop_data = self._pop.get_filtered_data(filter_bit)
         self._precision = self._ipr.calc_precision(
-            self._pop.get_data()[self._pop.COLUMN_URI].values.tolist(),
+            pop_data[self._pop.COLUMN_URI].values.tolist(),
             batch_size,
             dist_calc_batch_size,
         )

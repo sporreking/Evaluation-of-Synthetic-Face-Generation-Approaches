@@ -86,11 +86,14 @@ class PPLCompoundMetric(CompoundMetric):
             )
         }
 
-    def calc(self, **parameters: Any) -> Any:
+    def calc(self, filter_bit: int = 1, **parameters: Any) -> Any:
         """
         Calculates the perceptual path length (PPL).
 
         Args:
+            filter_bit (int, optional): Filter bit used to select a subset of the
+                population. Filter bit is defined by the order in FilterRegistry. For example,
+                the first filter corresponds to filter bit 1. Defaults to 1 (IdentityFilter).
             batch_size (int, optional): Batch size used to calculate the PPL.
                 Note that batch size must be even!
                 Defaults to `BATCH_SIZE`.
@@ -124,8 +127,9 @@ class PPLCompoundMetric(CompoundMetric):
         else:
             use_crop = True
 
+        pop_data = self._population.get_filtered_data(filter_bit)
+
         ## Get latent codes from population
-        pop_data = self._population.get_data()
         latent_codes = np.stack(pop_data["latent_code"].to_numpy())
 
         ## Interpolate to find latent codes pairs to test
