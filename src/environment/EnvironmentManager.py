@@ -1,6 +1,7 @@
 from pathlib import Path
 from sys import platform
 from os import system
+from warnings import warn
 import socket
 import struct
 import numpy as np
@@ -20,6 +21,32 @@ class EnvironmentManager:
     AGENT_FILE_PREFIX = "agent"
     ENV_FILE_PREFIX = "env"
     CONDA_ENV_PREFIX = "sfg"
+
+    @staticmethod
+    def is_setup(env_name: str) -> bool:
+        """
+        This function checks if the specified environment has been setup with `setup(env_name)`.
+
+        Args:
+            env_name (str): The name of the environment to check for.
+
+        Returns:
+            bool: `True` if the environment has been created, or `False` otherwise.
+        """
+        if platform == "win32":  # TODO: Windows support
+            warn(
+                f"WARNING! Windows not supported. Assuming that environment '{env_name}' "
+                + "has been set up!"
+            )
+            return True
+
+        # Not on windows
+        return (
+            system(
+                f"conda env list | grep {EnvironmentManager.CONDA_ENV_PREFIX}_{env_name} > /dev/null"
+            )
+            == 0
+        )
 
     @staticmethod
     def setup(env_name: str) -> bool:
