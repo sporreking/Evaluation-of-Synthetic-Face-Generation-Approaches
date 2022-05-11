@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 
 
-def init_phase():
+def init_phase() -> None:
     """
     Create conda environments and download resources.
     """
@@ -16,7 +16,23 @@ def init_phase():
     os.system("python dataset/download.py")
 
 
-def _get_environment_names():
+def init_done() -> bool:
+    """
+    Check if this phase is ready enough for the next phase to be executed.
+
+    Returns:
+        bool: True if this phase is satisfied, otherwise False.
+    """
+    return all(
+        (
+            EM.is_setup(environment_name)
+            and (EM.ENV_ROOT_DIR / environment_name).is_dir()
+        )
+        for environment_name in _get_environment_names()
+    )
+
+
+def _get_environment_names() -> list[str]:
     pathlist = Path("environment").glob("env_*.yml")
     environment_names = []
     for path in pathlist:
