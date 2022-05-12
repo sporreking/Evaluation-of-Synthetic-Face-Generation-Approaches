@@ -448,7 +448,7 @@ def _populate_population(pop: Population, controller: Controller) -> None:
         manipulated_latent_codes,
         latent_codes,
         uris,
-        [0 for i in range(0, MIN_TRAIN_SIZE)],  # TODO Filter support
+        [1 for i in range(0, MIN_TRAIN_SIZE)],  # TODO Filter support
         append=False,
         save_to_disk=True,
         **controller_input,
