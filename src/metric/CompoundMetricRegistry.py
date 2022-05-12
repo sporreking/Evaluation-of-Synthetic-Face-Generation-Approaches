@@ -7,7 +7,7 @@ from src.metric.RecallCompoundMetric import RecallCompoundMetric, RECALL_NAME
 from src.metric.PrecisionCompoundMetric import PrecisionCompoundMetric, PRECISION_NAME
 
 
-class CompoundMetricRegistry(Registry):
+class CompoundMetricRegistry(Registry[type[CompoundMetric]]):
     """
     Static class implementing the abstract Registry class
     used for initialization and storing of all subclasses of the
@@ -27,25 +27,10 @@ class CompoundMetricRegistry(Registry):
 
     @staticmethod
     def get_names() -> list[str]:
-        """
-        Returns all the names (keys) in the registry.
-
-        Returns:
-            list[str]: List of all names (keys) in the registry.
-        """
         return list(CompoundMetricRegistry._COMPOUND_METRICS.keys())
 
     @staticmethod
     def get_resource(name: str) -> type[CompoundMetric]:
-        """
-        Returns a compound metric with the given `name` from the registry.
-
-        Args:
-            name (str): Name of the CompoundMetric.
-
-        Returns:
-            CompoundMetric: CompoundMetric with the given `name`.
-        """
         return CompoundMetricRegistry._COMPOUND_METRICS[name]
 
     @staticmethod

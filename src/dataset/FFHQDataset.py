@@ -13,7 +13,6 @@ from typing import List, Tuple
 
 _DEFAULT_RES = 256
 FFHQ_NAME = "FFHQ"
-FFHQ_DEF_NAME = FFHQ_NAME + "_" + str(_DEFAULT_RES)
 
 
 class FFHQDataset(Dataset):
