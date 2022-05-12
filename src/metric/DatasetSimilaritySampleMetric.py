@@ -43,12 +43,14 @@ class DatasetSimilaritySampleMetric(SampleMetric):
 
         return {
             "download_backbone": SetupMode(
+                True,
                 lambda _: MS.setup,
                 MS.is_ready,
                 lambda: "Partial FC backbone downloaded.",
                 required_modes=[],
             ),
             "project_dataset": SetupMode(
+                True,
                 lambda _: MS.project_images(
                     ds.get_image_paths(), file_name_suffix=ds_name
                 ),

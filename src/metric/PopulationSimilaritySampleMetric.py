@@ -35,6 +35,7 @@ class PopulationSimilaritySampleMetric(SampleMetric):
     def reg_setup_modes(self) -> dict[str, SetupMode]:
         return {
             "download_backbone": SetupMode(
+                True,
                 lambda _: MS.setup,
                 MS.is_ready,
                 lambda: "Partial FC backbone downloaded.",

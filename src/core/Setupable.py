@@ -17,6 +17,7 @@ class SetupMode:
 
     def __init__(
         self,
+        required: bool,
         setup_func: SetupFunction,
         ready_func: Callable[[], bool],
         info_func: Callable[[], str] = lambda: "No information available.",
@@ -27,6 +28,8 @@ class SetupMode:
         Constructs a new setup mode wrapper.
 
         Args:
+            required (bool): Should be True if the mode must be ready for the entire Setupable
+                to be considered ready.
             setup_func (SetupFunction): A function for performing the actual setup.
                 When this function is called from `Setupable.setup()`, parameters will be forwarded to it.
                 All valid parameters are expected to be specified by the `**parameters` argument. The
@@ -36,11 +39,19 @@ class SetupMode:
             required_modes (list[str], optional): List of setup modes that must be completed before this mode.
             **parameters (Any): Setup parameters to pass to `setup_func`, and their default values.
         """
+        self._required = required
         self._setup_func = setup_func
         self._ready_func = ready_func
         self._info_func = info_func
         self._required_modes = required_modes
         self._parameters = parameters
+
+    @property
+    def required(self):
+        """
+        True if the mode must be ready for the entire Setupable to be considered ready.
+        """
+        return self._required
 
     @property
     def setup(self) -> SetupFunction:
@@ -236,6 +247,12 @@ class Setupable(metaclass=abc.ABCMeta):
             # Perform actual setup
             sm.setup(improve_if_completed and sm.ready(), **p)
 
+            # Check if setup was successful
+            if not sm.ready():
+                raise RuntimeError(
+                    f"Setup mode '{mode}' failed! The mode was not ready after execution."
+                )
+
     def get_setup_modes(self) -> list[str]:
         """
         Returns a list of all available setup modes. Note that the generic
@@ -273,12 +290,14 @@ class Setupable(metaclass=abc.ABCMeta):
 
         Args:
             mode (str, optional): The mode to check for. If None, it will check
-                if all modes have been completed. Defaults to None.
+                whether all modes that have `required=True` are completed.
+                Defaults to None.
 
         Returns:
             bool: `True` if the setup of the specified mode has been completed.
                 Note that if `mode=None`, it will instead return `True` if and
-                only if all setups have been completed.
+                only if all required modes have been completed, i.e., the
+                Setupable instance should be able to run.
 
         Raises:
             ValueError: If the specified setup mode is not recognized.
@@ -286,7 +305,9 @@ class Setupable(metaclass=abc.ABCMeta):
 
         # Check if all modes are ready
         if mode is None:
-            return not any(not s.ready() for _, s in self.reg_setup_modes().items())
+            return all(
+                s.ready() for _, s in self.reg_setup_modes().items() if s.required
+            )
 
         # Check if mode exists
         self._check_valid_mode(mode)

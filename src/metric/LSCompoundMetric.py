@@ -72,6 +72,7 @@ class LSCompoundMetric(CompoundMetric):
         # Construct modes
         return {
             SETUP_POPULATION_NAME: SetupMode(
+                False,
                 lambda _: self._setup_pop(),
                 lambda: is_population_ready(
                     get_population_name(gen_name, controller_name)
@@ -82,6 +83,7 @@ class LSCompoundMetric(CompoundMetric):
             ),
             **{
                 mn_cls(attr): SetupMode(
+                    False,
                     lambda _, batch_size, epochs, attr=attr: self._setup_auxillary_classifier(
                         attr, batch_size, epochs
                     ),
@@ -89,7 +91,7 @@ class LSCompoundMetric(CompoundMetric):
                     lambda attr=attr: asad_controller._setup_info_func(
                         mn_cls(attr, False)
                     ),
-                    [SETUP_POPULATION_NAME],
+                    required_modes=[],
                     batch_size=64,
                     epochs=40,
                 )
@@ -97,32 +99,14 @@ class LSCompoundMetric(CompoundMetric):
             },
             **{
                 SETUP_LABELS_NAME(attr): SetupMode(
+                    False,
                     lambda _, batch_size, epochs, attr=attr: self._setup_training_labels(
                         attr, batch_size, epochs
                     ),
                     lambda attr=attr, pop_name=get_population_name(
                         gen_name, controller.get_name()
                     ): is_labels_ready(attr, pop_name),
-                    required_modes=[mn_cls(attr)],
-                    batch_size=64,
-                    epochs=40,
-                )
-                for attr in controller._attrs
-            },
-            **{
-                SETUP_LABELS_NAME(attr)
-                + "_target": SetupMode(
-                    lambda _, batch_size, epochs, attr=attr: setup_labels(
-                        controller,
-                        attr,
-                        batch_size,
-                        epochs,
-                        self._population.get_name(),
-                    ),
-                    lambda attr=attr: is_labels_ready(
-                        attr, self._population.get_name()
-                    ),
-                    required_modes=[mn_cls(attr)],
+                    required_modes=[SETUP_POPULATION_NAME, mn_cls(attr)],
                     batch_size=64,
                     epochs=40,
                 )
@@ -130,13 +114,11 @@ class LSCompoundMetric(CompoundMetric):
             },
             **{
                 (SETUP_SVC_PREFIX + "_" + attr): SetupMode(
+                    True,
                     lambda _, attr=attr: self._train_svc(attr),
                     lambda attr=attr: get_svc(attr, gen_name, controller_name)
                     is not None,
-                    required_modes=[
-                        SETUP_LABELS_NAME(attr),
-                        SETUP_LABELS_NAME(attr) + "_target",
-                    ],
+                    required_modes=[SETUP_LABELS_NAME(attr)],
                 )
                 for attr in controller._attrs
             },
