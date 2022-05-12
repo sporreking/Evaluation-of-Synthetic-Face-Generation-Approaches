@@ -1,4 +1,7 @@
+from src.generator.GeneratorRegistry import GeneratorRegistry
 from src.generator.UNetGANGenerator import UNETGAN_NAME
+from src.generator.StyleGAN2ADAGenerator import STYLEGAN2ADA_NAME
+from src.generator.StyleSwinGenerator import STYLESWIN_NAME
 from src.controller.ASADController import ASADController, ASAD_NAME
 from src.controller.IdentityController import IdentityController, IDENTITY_NAME
 from src.controller.InterFaceGANController import (
@@ -6,81 +9,59 @@ from src.controller.InterFaceGANController import (
     INTERFACEGAN_NAME,
 )
 from src.controller.Controller import Controller
-from typing import List, Tuple
+from typing import List
 from src.core.Registry import Registry
 
 
-class ControllerRegistry(Registry):
+class ControllerRegistry(Registry[type[Controller]]):
     """
     Static class used for initialization and storing of all subclasses of the
     Controller class.
 
-    * If more controllers (or controller/generator pairs) are implemented
-    and compatible they should be added to the internal
-    storage (`_CONTROLLERS`) of this class.
+    * If more controllers are implemented they should be added to the internal
+    storage (`_CONTROLLERS`) of this class. If a controller is only compatible
+    for certain generators, these should be added to `_COMPATIBLE_GENERATORS`.
     """
 
     _CONTROLLERS = {
-        ASAD_NAME: {UNETGAN_NAME: ASADController},
-        IDENTITY_NAME: {UNETGAN_NAME: IdentityController},
-        INTERFACEGAN_NAME: {UNETGAN_NAME: InterFaceGANController},
+        IDENTITY_NAME: IdentityController,
+        ASAD_NAME: ASADController,
+        INTERFACEGAN_NAME: InterFaceGANController,
+    }
+
+    _COMPATIBLE_GENERATORS = {  #! Omit controllers if all generators are compatible
+        ASAD_NAME: [
+            UNETGAN_NAME,
+            STYLEGAN2ADA_NAME,
+            STYLESWIN_NAME,
+        ]
     }
 
     @staticmethod
-    def get_names() -> List[Tuple[str]]:
-        """
-        Returns all the names in the registry.
-
-        Returns:
-            List[Tuple[str]]: List of all names (contr, gen) in the registry.
-        """
-        d = ControllerRegistry._CONTROLLERS
-        return [(contr, gen) for contr in d.keys() for gen in d[contr].keys()]
-
-    @staticmethod
-    def get_controller_names() -> List[str]:
-        """
-        Returns all the names (keys) in the registry.
-
-        Returns:
-            list[str]: List of all names (keys) in the registry.
-        """
+    def get_names() -> List[str]:
         return list(ControllerRegistry._CONTROLLERS.keys())
 
     @staticmethod
-    def get_generator_names(controller_name: str) -> List[str]:
-        """
-        Returns all the names (keys) in the registry.
-
-        Returns:
-            list[str]: List of all names (keys) in the registry.
-        """
-        return list(ControllerRegistry._CONTROLLERS[controller_name].keys())
-
-    @staticmethod
-    def get_resource(name: str, gen_name: str) -> type[Controller]:
-        """
-        Returns a controller with the given `name` and `gen_name` from the registry.
-
-        Args:
-            name (str): Name of the controller.
-            gen_name (str): Name of the generator.
-
-        Returns:
-            Dataset: controller with the given `name`.
-        """
-        return ControllerRegistry._CONTROLLERS[name][gen_name]
+    def get_resource(name: str) -> type[Controller]:
+        return ControllerRegistry._CONTROLLERS[name]
 
     @staticmethod
     def get_resources() -> List[type[Controller]]:
+        return list(ControllerRegistry._CONTROLLERS.values())
+
+    @staticmethod
+    def get_compatible_generator_names(name: str) -> list[str]:
         """
-        Returns all controllers from the registry.
+        Returns all compatible generators for the controller associated with given `name`.
+
+        Args:
+            name (str): Name of the controller.
 
         Returns:
-            list[Controller]: All controllers from the registry.
+            list[int]: The names of all compatible generators.
         """
-        return [
-            controller
-            for controller_d in ControllerRegistry._CONTROLLERS.values()
-            for controller in controller_d.values()
-        ]
+        return (
+            ControllerRegistry._COMPATIBLE_GENERATORS[name]
+            if name in ControllerRegistry._COMPATIBLE_GENERATORS
+            else GeneratorRegistry.get_names()
+        )

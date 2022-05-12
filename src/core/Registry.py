@@ -1,8 +1,10 @@
 import abc
-from typing import Any, Union, Tuple
+from typing import Any, Generic, TypeVar
+
+T = TypeVar("T")
 
 
-class Registry(metaclass=abc.ABCMeta):
+class Registry(Generic[T], metaclass=abc.ABCMeta):
     """
     Abstract class outlining the general interface for different types
     of registries of resources (Datasets, Generators, Controllers etc).
@@ -13,41 +15,34 @@ class Registry(metaclass=abc.ABCMeta):
 
     @staticmethod
     @abc.abstractmethod
-    def get_names() -> list[Union[str, Tuple]]:
+    def get_names() -> list[str]:
         """
-        Returns all the names (keys) in the registry. In the case of
-        nestled resource storing structure, the multiple keys are stored in
-        tuples of strings instead of string. The names may be used to access
-        resources through the function `get_resource`.
+        Returns all the names (keys) in the registry. The names may be used to access
+        resources through `get_resource(name)`.
 
         Returns:
-            list[Union[str, Tuple]]: List of all names (keys) in the registry. Tuple if
-                nestled resource storing structure, e.g., [("ASAD", "unetgan"),...]
-                such that resource can be accessed using  `get_resource(("ASAD", "unetgan"))`.
+            list[str]: List of all names (keys) in the registry.
         """
 
     @staticmethod
     @abc.abstractmethod
-    def get_resource(name: Union[str, Tuple[str]]) -> Any:
+    def get_resource(name: str) -> T:  # TODO: REMOVE NESTED SHIT
         """
-        Returns a resource with the given `name` from the registry.
-
-        For more information see the documentation of `get_names()`.
+        Returns the resource associated with the given `name` from the registry.
 
         Args:
-            name (Union[str, Tuple[str]]): Name of the dataset. Tuple of strings if nestled
-                storing structure.
+            name (str): Name of the resource to fetch.
 
         Returns:
-            Dataset: Dataset with the given `name`.
+            T: The resource associated with the given `name`.
         """
 
     @staticmethod
     @abc.abstractmethod
-    def get_resources() -> list[Any]:
+    def get_resources() -> list[T]:
         """
         Returns all resources from the registry.
 
         Returns:
-            list[Any]: All resources from the registry.
+            list[T]: All resources from the registry.
         """
