@@ -41,6 +41,15 @@ class Controller(Setupable, metaclass=abc.ABCMeta):
         """
         return self._name
 
+    def get_attributes(self) -> list[str]:
+        """
+        Returns the attribute names of this controller.
+
+        Returns:
+            list[str]: The attribute names of this controller.
+        """
+        return self._attrs
+
     def get_generator(self) -> Generator:
         """
         Returns the generator of this controller.
