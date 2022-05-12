@@ -4,7 +4,7 @@ import src.metric.CompoundMetric as CompoundMetric
 from src.metric.CompoundMetric import CompoundMetric
 from src.metric.SampleMetricManager import SampleMetricManager
 from src.core.Setupable import SetupMode
-from src.metric.CompoundMetricManager import CompoundMetricManager, FILTER_BIT_NAME
+from src.metric.CompoundMetricManager import CompoundMetricManager
 from typing import Any
 from src.controller.InterFaceGANController import (
     SETUP_POPULATION_NAME,
