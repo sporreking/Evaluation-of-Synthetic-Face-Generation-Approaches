@@ -143,14 +143,17 @@ class PPLCompoundMetric(CompoundMetric):
         t = np.random.uniform(0, 1 - EPS, size=N)
 
         gen: Generator = self._cmm._controller.get_generator()
-        interpolated_latent_codes = np.zeros((N, latent_codes.shape[1]))
+        len_code = latent_codes.shape[1]
+        interpolated_latent_codes = np.zeros((N, len_code))
         for i in tqdm(range(0, N, 2), desc="Latent code interpolation"):
-            code_1 = latent_codes[indices[i]]
-            code_2 = latent_codes[indices[i + 1]]
-            interpolated_latent_codes[i, :] = gen.interpolate(code_1, code_2, t[i])
+            code_1 = latent_codes[indices[i]].reshape((1, len_code))
+            code_2 = latent_codes[indices[i + 1]].reshape((1, len_code))
+            interpolated_latent_codes[i, :] = gen.interpolate(
+                code_1, code_2, np.array([t[i]])
+            ).squeeze()
             interpolated_latent_codes[i + 1, :] = gen.interpolate(
-                code_1, code_2, t[i] + EPS
-            )
+                code_1, code_2, np.array([t[i]]) + EPS
+            ).squeeze()
 
         ## Generate images
         img_uris = gen.generate(interpolated_latent_codes)
