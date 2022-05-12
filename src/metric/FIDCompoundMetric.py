@@ -41,6 +41,7 @@ class FIDCompoundMetric(CompoundMetric):
         ds = self.get_dataset()
         return {
             f"statistics_{fcm}_{ds.get_name(ds.get_resolution())}": SetupMode(
+                True,
                 lambda _, fcm=fcm: self._setup(fcm),
                 lambda fcm=fcm: self._is_ready(fcm),
             )

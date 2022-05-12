@@ -77,6 +77,7 @@ class InterFaceGANController(Controller):
         # Construct modes
         return {
             SETUP_POPULATION_NAME: SetupMode(
+                False,
                 lambda _: self._setup_pop(),
                 lambda pop_name=get_population_name(
                     gen_name, controller.get_name()
@@ -87,12 +88,13 @@ class InterFaceGANController(Controller):
             ),
             **{
                 mn_cls(attr): SetupMode(
+                    False,
                     lambda _, batch_size, epochs, attr=attr: self._setup_auxillary_classifier(
                         attr, batch_size, epochs
                     ),
                     lambda attr=attr: load_aux_best(mn_cls(attr, False)) is not None,
                     lambda attr=attr: self._setup_info_func(mn_cls(attr, False)),
-                    [SETUP_POPULATION_NAME],
+                    required_modes=[],
                     batch_size=64,
                     epochs=40,
                 )
@@ -100,13 +102,14 @@ class InterFaceGANController(Controller):
             },
             **{
                 SETUP_LABELS_NAME(attr): SetupMode(
+                    False,
                     lambda _, batch_size, epochs, attr=attr: self._setup_training_labels(
                         attr, batch_size, epochs
                     ),
                     lambda attr=attr, pop_name=get_population_name(
                         gen_name, controller.get_name()
                     ): is_labels_ready(attr, pop_name),
-                    required_modes=[mn_cls(attr)],
+                    required_modes=[SETUP_POPULATION_NAME, mn_cls(attr)],
                     batch_size=64,
                     epochs=40,
                 )
@@ -114,6 +117,7 @@ class InterFaceGANController(Controller):
             },
             **{
                 (SETUP_SVC_PREFIX + "_" + attr): SetupMode(
+                    True,
                     lambda _, attr=attr: self._train_svc(attr),
                     lambda attr=attr: get_svc(attr, gen_name, controller.get_name())
                     is not None,

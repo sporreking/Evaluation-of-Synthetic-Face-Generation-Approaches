@@ -66,6 +66,7 @@ class ASADController(Controller):
         return {
             **{
                 mn_cls(attr): SetupMode(
+                    False,
                     lambda _, batch_size, epochs, attr=attr: self._setup_classifier(
                         attr, batch_size, epochs
                     ),
@@ -78,6 +79,7 @@ class ASADController(Controller):
             },
             **{
                 mn_dec(attr): SetupMode(
+                    True,
                     lambda _, batch_size, epochs, iter_per_epoch, lambda_mse, attr=attr: self._setup_decoder(
                         attr, epochs, iter_per_epoch, batch_size, lambda_mse
                     ),

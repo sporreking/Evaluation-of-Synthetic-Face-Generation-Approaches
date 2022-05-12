@@ -43,6 +43,7 @@ class RecallCompoundMetric(CompoundMetric):
         ds = self.get_dataset()
         return {
             get_ref_file_name(ds, omit_extension=True): SetupMode(
+                True,
                 lambda _, batch_size, dist_calc_batch_size: self._ipr.compute_manifold_ref(
                     batch_size, dist_calc_batch_size
                 ),

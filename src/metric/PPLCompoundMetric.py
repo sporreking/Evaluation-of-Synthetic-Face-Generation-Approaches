@@ -81,6 +81,7 @@ class PPLCompoundMetric(CompoundMetric):
     def reg_setup_modes(self) -> dict[str, SetupMode]:
         return {
             VGG16_SETUP_NAME: SetupMode(
+                True,
                 lambda _,: self._get_vgg16_feature_extractor(),
                 lambda: self._get_local_vgg16_feature_extractor() is not None,
             )
