@@ -178,6 +178,10 @@ class CompoundMetricManager:
 
                 # Check if value is NaN
                 if np.isnan(self._metrics.loc[0, metric_name]):
+                    msg = f"# Computing {metric_name} #"
+                    print(len(msg) * "#")
+                    print(msg)
+                    print(len(msg) * "#")
                     # Calculate for missing metric
                     self.calc(metric_name, **parameters)
 
@@ -221,6 +225,10 @@ class CompoundMetricManager:
 
         # Calculate metrics
         for cm in cms:
+            msg = f"# Computing {cm.get_name()} #"
+            print(len(msg) * "#")
+            print(msg)
+            print(len(msg) * "#")
             # Derive metric for samples
             result = cm.calc(filter_bit=filter_bit, **parameters)
 
