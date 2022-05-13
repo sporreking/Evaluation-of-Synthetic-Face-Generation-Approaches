@@ -14,7 +14,10 @@ import numpy as np
 class CompoundMetricManager:
 
     # Pickle file name
-    PICKLE_METRICS_FILE_NAME = "metrics.pkl"
+    PICKLE_METRICS_SUFFIX = "metrics_filter_bit_"
+    PICKLE_METRICS_FILE_NAME = (
+        lambda cls, filter_bit: f"{cls.PICKLE_METRICS_SUFFIX}{filter_bit}.pkl"
+    )
 
     def __init__(
         self,
@@ -23,6 +26,7 @@ class CompoundMetricManager:
         dataset: Dataset,
         smm: SampleMetricManager,
         controller: Controller,
+        filter_bit: int,
     ):
         """
         Constructs a new CompoundMetricManager for handling the specified metrics
@@ -30,7 +34,7 @@ class CompoundMetricManager:
 
         Saves and loads metrics from pickle file located at:
 
-        'population/`population.get_name()`/`PICKLE_METRICS_FILE_NAME`'
+        'population/`population.get_name()`/`PICKLE_METRICS_FILE_NAME(filter_bit)`'
 
         Args:
             compound_metrics (list[Type]): list of the
@@ -40,6 +44,9 @@ class CompoundMetricManager:
             population (Population): The population on which the metrics should be applied.
             smm (SampleMetricManager): Used for calculating per-sample metrics.
             controller (Controller): The controller associated with the population.
+            filter_bit (int): Filter bit used to select a subset of the
+                population. Filter bit is defined by the order in FilterRegistry. For example,
+                the first filter (IdentityFilter) corresponds to filter bit 1.
 
         Raises:
             ValueError: If any of the items passed to `metrics` is not
@@ -54,6 +61,7 @@ class CompoundMetricManager:
         self._population = population
         self._smm = smm
         self._controller = controller
+        self._filter_bit = filter_bit
 
         # Construct metrics
         compound_metrics_con = [metric(self, smm) for metric in compound_metrics]
@@ -73,7 +81,7 @@ class CompoundMetricManager:
         )
         self._file_jar = FileJar(self._file_jar_path)
         file_jar_metrics = self._file_jar.get_file(
-            self.PICKLE_METRICS_FILE_NAME, pd.read_pickle
+            self.PICKLE_METRICS_FILE_NAME(self._filter_bit), pd.read_pickle
         )
 
         # Copy metrics specified by `compound_metrics` from saved metrics from disk
@@ -178,10 +186,6 @@ class CompoundMetricManager:
 
                 # Check if value is NaN
                 if np.isnan(self._metrics.loc[0, metric_name]):
-                    msg = f"# Computing {metric_name} #"
-                    print(len(msg) * "#")
-                    print(msg)
-                    print(len(msg) * "#")
                     # Calculate for missing metric
                     self.calc(metric_name, **parameters)
 
@@ -194,7 +198,6 @@ class CompoundMetricManager:
     def calc(
         self,
         metric_names: Union[list[str], str] = None,
-        filter_bit: int = 1,
         **parameters: Any,
     ) -> None:
         """
@@ -205,9 +208,6 @@ class CompoundMetricManager:
                 The manager must have been initialized with CompoundMetrics
                 which the specified metric names match. If `None`, all metrics will be
                 calculated. Defaults to None.
-            filter_bit (int, optional): Filter bit used to select a subset of the
-                population. Filter bit is defined by the order in FilterRegistry. For example,
-                the first filter corresponds to filter bit 1. Defaults to 1 (IdentityFilter).
             **parameters (Any): Arbitrary parameters required by the metrics.
                 All of these parameters are forwarded to each requested metric's
                 CompoundMetric. Note that if different metrics require parameters
@@ -230,7 +230,7 @@ class CompoundMetricManager:
             print(msg)
             print(len(msg) * "#")
             # Derive metric for samples
-            result = cm.calc(filter_bit=filter_bit, **parameters)
+            result = cm.calc(filter_bit=self._filter_bit, **parameters)
 
             # Store result
             self._metrics.loc[0, cm.get_name()] = result
@@ -238,7 +238,7 @@ class CompoundMetricManager:
         ## Save results to disk
         # Get metrics from disk
         file_jar_metrics = self._file_jar.get_file(
-            self.PICKLE_METRICS_FILE_NAME, pd.read_pickle
+            self.PICKLE_METRICS_FILE_NAME(self._filter_bit), pd.read_pickle
         )
 
         # Update relevent columns with the newly calculated metrics if it exists
@@ -248,13 +248,39 @@ class CompoundMetricManager:
 
             # Save results to disk
             self._file_jar.store_file(
-                self.PICKLE_METRICS_FILE_NAME, file_jar_metrics.to_pickle
+                self.PICKLE_METRICS_FILE_NAME(self._filter_bit),
+                file_jar_metrics.to_pickle,
             )
         else:
             # Save results to disk
             self._file_jar.store_file(
-                self.PICKLE_METRICS_FILE_NAME, self._metrics.to_pickle
+                self.PICKLE_METRICS_FILE_NAME(self._filter_bit), self._metrics.to_pickle
             )
+
+    def clear_compound_metrics(self) -> None:
+        """
+        Clear metrics from internal storage.
+        """
+        self._metrics.loc[0, :] = np.nan
+
+    def clear_local_compound_metrics(population_name: str) -> None:
+        """
+        Clear metrics from local storage, will clear all compound metrics in
+        population directory.
+
+        Args:
+            population_name (str): Name of the population to be cleared.
+        """
+        dir_path = Population.POPULATION_ROOT_DIR / population_name
+
+        # Remove local metrics
+        [
+            file.unlink()
+            for file in dir_path.glob(
+                f"{CompoundMetricManager.PICKLE_METRICS_SUFFIX}*.pkl"
+            )
+            if file.is_file()
+        ]
 
     def _parse_metric_names(self, metric_names: Union[list, str]) -> list[str]:
         # Parse sample metric name input
