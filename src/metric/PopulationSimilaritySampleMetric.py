@@ -1,16 +1,18 @@
+from __future__ import annotations
 from src.metric.SampleMetric import SampleMetric
-from src.metric.SampleMetricManager import SampleMetricManager
-from src.population.Population import Population
 import src.metric.MatchingScore as MS
 from src.core.Setupable import SetupMode
-
-from typing import Any
-
+from typing import Any, TYPE_CHECKING
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+if TYPE_CHECKING:
+    from src.metric.SampleMetricManager import SampleMetricManager
+
+
 POPULATION_SIMILARITY_NAME = "PopulationSimilarity"
+
 
 class PopulationSimilaritySampleMetric(SampleMetric):
     """
@@ -62,13 +64,15 @@ class PopulationSimilaritySampleMetric(SampleMetric):
         """
 
         # Get parameter
-        k = parameters["k"] if "k" in parameters else 2  #! Default (should match docstring)
+        k = (
+            parameters["k"] if "k" in parameters else 2
+        )  #! Default (should match docstring)
 
         # Get data
         df = self._population.get_data()
 
         # Fetch samples to calculate for
-        uris = list(df[Population.COLUMN_URI])
+        uris = list(df[self._population.COLUMN_URI])
 
         # Project population images
         sample_projections = MS.project_images(uris)

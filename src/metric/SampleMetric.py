@@ -7,9 +7,9 @@ from typing import Any, TYPE_CHECKING
 
 from src.core.Setupable import Setupable
 from src.dataset.Dataset import Dataset
-from src.population.Population import Population
 
 if TYPE_CHECKING:
+    from src.population.Population import Population
     from src.metric.SampleMetricManager import SampleMetricManager
 
 

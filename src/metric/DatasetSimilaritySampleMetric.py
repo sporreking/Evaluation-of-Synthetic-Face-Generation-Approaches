@@ -1,14 +1,14 @@
-from src.metric.SampleMetric import SampleMetric
-from src.metric.SampleMetricManager import SampleMetricManager
-from src.population.Population import Population
+from __future__ import annotations
 import src.metric.MatchingScore as MS
 from src.core.Setupable import SetupMode
-
-from typing import Any
-
+from typing import Any, TYPE_CHECKING
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from src.metric.SampleMetric import SampleMetric
+
+if TYPE_CHECKING:
+    from src.metric.SampleMetricManager import SampleMetricManager
 
 DATASET_SIMILARITY_NAME = "DatasetSimilarity"
 
@@ -74,7 +74,7 @@ class DatasetSimilaritySampleMetric(SampleMetric):
         """
 
         # Fetch samples to calculate for
-        uris = list(self._population.get_data(ids)[Population.COLUMN_URI])
+        uris = list(self._population.get_data(ids)[self._population.COLUMN_URI])
 
         # Load dataset projections
         dataset_projections = MS.load_projected_images(
