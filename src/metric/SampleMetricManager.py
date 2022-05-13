@@ -44,7 +44,7 @@ class SampleMetricManager:
         self._population = population
         self._dataset = dataset
 
-        # Save descriptions
+        # Save sample metrics
         self._sample_metrics = {sm.get_name(): sm(self) for sm in sample_metrics}
 
         # Create storage
@@ -260,7 +260,7 @@ class SampleMetricManager:
         # Adjust input
         metric_names, ids = self._parse_input(metric_names, ids, check_calc=False)
 
-        # Fetch sample metric descriptions
+        # Fetch sample metrics
         sms: list[SampleMetric.SampleMetric] = [
             self._sample_metrics[metric_name] for metric_name in metric_names
         ]
