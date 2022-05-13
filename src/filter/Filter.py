@@ -2,13 +2,14 @@ from __future__ import annotations
 import pandas as pd
 import abc
 from typing import TYPE_CHECKING, Type
+from src.core.Setupable import Setupable
 
 if TYPE_CHECKING:
     from src.filter.FilterRegistry import FilterRegistry
     from src.metric.SampleMetricManager import SampleMetricManager
 
 
-class Filter(metaclass=abc.ABCMeta):
+class Filter(Setupable, metaclass=abc.ABCMeta):
     """
     Abstract static class outlining the general interface for different types
     of filters.
