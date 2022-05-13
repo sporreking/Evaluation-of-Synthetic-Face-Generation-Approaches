@@ -22,7 +22,8 @@ class IdentityController(Controller):
 
         Args:
             gen (Generator): The generator associated with the controller.
-            attributes (list[str], optional): Not used. Default is None.
+            attributes (list[str], optional): Used for calculating metrics.
+                Not used for image generation. Default is None.
 
         """
         super().__init__(IDENTITY_NAME, gen)
