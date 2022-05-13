@@ -5,6 +5,14 @@ if TYPE_CHECKING:
     from src.filter.Filter import Filter
 
 from src.filter.IdentityFilter import IdentityFilter, IDENTITY_FILTER_NAME
+from src.filter.DatasetSimilarityFilter import (
+    DatasetSimilarityFilter,
+    DATASET_SIMILARITY_FILTER_NAME,
+)
+from src.filter.PopulationSimilarityFilter import (
+    PopulationSimilarityFilter,
+    POPULATION_SIMILARITY_FILTER_NAME,
+)
 
 from src.core.Registry import Registry
 
@@ -22,7 +30,9 @@ class FilterRegistry(Registry):
     """
 
     _FILTERS = {  #! IdentityFilter must be the first entry in this list - do not change its location
-        IDENTITY_FILTER_NAME: IdentityFilter
+        IDENTITY_FILTER_NAME: IdentityFilter,
+        DATASET_SIMILARITY_FILTER_NAME: DatasetSimilarityFilter,
+        POPULATION_SIMILARITY_FILTER_NAME: PopulationSimilarityFilter,
     }
 
     @staticmethod

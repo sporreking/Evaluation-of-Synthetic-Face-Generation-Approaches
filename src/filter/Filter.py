@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pandas as pd
 import abc
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING, Type, Any
 from src.core.Setupable import Setupable
 
 if TYPE_CHECKING:
@@ -48,7 +48,7 @@ class Filter(Setupable, metaclass=abc.ABCMeta):
 
     @staticmethod
     @abc.abstractmethod
-    def apply(smm: SampleMetricManager) -> pd.index:
+    def apply(smm: SampleMetricManager, **parameters: Any) -> pd.index:
         """
         Should apply filter to population and return the indices of the samples
         which passed.
@@ -56,7 +56,7 @@ class Filter(Setupable, metaclass=abc.ABCMeta):
         Args:
             smm (SampleMetricManager): Filtering will be based on the metrics contained by this manager.
                 Population will also be derived from this manager.
-
+            **parameters (Any): Arbitrary parameters.
         Returns:
             pd.index: The indices of the samples which passed the filter.
         """
