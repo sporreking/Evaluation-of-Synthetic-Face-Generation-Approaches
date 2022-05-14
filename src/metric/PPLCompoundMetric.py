@@ -90,6 +90,7 @@ class PPLCompoundMetric(CompoundMetric):
         """
         Calculates the perceptual path length (PPL).
 
+        #! Note that there must be at least two samples in the population.
         Args:
             filter_bit (int, optional): Filter bit used to select a subset of the
                 population. Filter bit is defined by the order in FilterRegistry. For example,
@@ -135,6 +136,10 @@ class PPLCompoundMetric(CompoundMetric):
         ## Interpolate to find latent codes pairs to test
         n_latent_codes = latent_codes.shape[0]
         N = n_latent_codes if n_latent_codes < NUM_SAMPLES else NUM_SAMPLES
+
+        # Make number of samples even
+        if N % 2:
+            N -= 1
 
         # Indices of random samples from the population.
         indices = np.random.choice(np.arange(n_latent_codes), size=N, replace=False)
