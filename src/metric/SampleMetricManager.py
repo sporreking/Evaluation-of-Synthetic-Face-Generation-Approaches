@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 from src.dataset.Dataset import Dataset
 import src.metric.SampleMetric as SampleMetric
+from src.util.FileJar import FileJar
+from pathlib import Path
 
 if TYPE_CHECKING:
     from src.population.Population import Population
@@ -14,6 +16,9 @@ class SampleMetricManager:
     Class used for calculating and storing metrics for a dedicated population.
     """
 
+    # Pickle file name
+    PICKLE_METRICS_NAME = "sample_metric.pkl"
+
     def __init__(
         self,
         sample_metrics: list[Type],
@@ -23,6 +28,10 @@ class SampleMetricManager:
         """
         Constructs a new SampleMetricManager for handling the specified metrics
         for the provided population.
+
+        Saves and loads metrics from pickle file located at:
+
+        'population/`population.get_name()`/`PICKLE_METRICS_NAME`'
 
         Args:
             sample_metrics (list[Type]): SampleMetrics that this manager should support.
@@ -49,6 +58,21 @@ class SampleMetricManager:
 
         # Create storage
         self._metrics = pd.DataFrame(columns=self.get_metric_names())
+
+        # Get already saved metrics from disk
+        self._file_jar_path = (
+            self._population.POPULATION_ROOT_DIR / self._population.get_name()
+        )
+        self._file_jar = FileJar(self._file_jar_path)
+        file_jar_metrics = self._file_jar.get_file(
+            self.PICKLE_METRICS_NAME, pd.read_pickle
+        )
+
+        # Copy metrics specified by `sample_metrics` from saved metrics from disk
+        if file_jar_metrics is not None:
+            for column in file_jar_metrics:
+                if column in self._metrics:
+                    self._metrics[column] = file_jar_metrics[column]
 
     def get_metric_instances(self) -> list[SampleMetric.SampleMetric]:
         """
@@ -146,10 +170,16 @@ class SampleMetricManager:
 
     def _is_calculated(self, id: int, metric_name: str):
         """Check whether a metric is calculated for a sample."""
-        return (
-            id in self._metrics.index
-            and self._metrics.loc[id, metric_name] == self._metrics.loc[id, metric_name]
-        )
+        if id in self._metrics.index:
+            val1 = self._metrics.loc[id, metric_name]
+            val2 = self._metrics.loc[id, metric_name]
+            return (
+                np.array_equal(val1, val2)
+                if isinstance(val1, np.ndarray)
+                else val1 == val2
+            )
+
+        return False
 
     def get(
         self,
@@ -218,7 +248,8 @@ class SampleMetricManager:
                         calc_ids.append(id)
 
                 # Calculate for missing metric
-                self.calc(metric_name, calc_ids, **parameters)
+                if calc_ids:
+                    self.calc(metric_name, calc_ids, **parameters)
 
         # Fetch metrics
         return self._metrics.loc[ids, metric_names]
@@ -267,6 +298,11 @@ class SampleMetricManager:
 
         # Calculate metrics
         for sm in sms:
+            msg = f"# Computing {sm.get_name()} #"
+            print(len(msg) * "#")
+            print(msg)
+            print(len(msg) * "#")
+
             # Derive metric for samples
             result: np.ndarray = sm.calc(ids, **parameters)
 
@@ -288,3 +324,46 @@ class SampleMetricManager:
                 self._metrics.loc[
                     self._population.get_data(ids).index[i], sm.get_name()
                 ] = result[i]
+
+            ## Save results to disk
+            # Get metrics from disk
+            file_jar_metrics = self._file_jar.get_file(
+                self.PICKLE_METRICS_NAME, pd.read_pickle
+            )
+
+            # Update relevent columns with the newly calculated metrics if it exists
+            if file_jar_metrics is not None:
+                for column in self._metrics:
+                    file_jar_metrics[column] = self._metrics[column]
+
+                # Save results to disk
+                self._file_jar.store_file(
+                    self.PICKLE_METRICS_NAME,
+                    file_jar_metrics.to_pickle,
+                )
+            else:
+                # Save results to disk
+                self._file_jar.store_file(
+                    self.PICKLE_METRICS_NAME, self._metrics.to_pickle
+                )
+
+    def clear_sample_metrics(self) -> None:
+        """
+        Clear metrics from internal storage.
+        """
+        # TODO: Only remove row independent metrics
+        self._metrics = pd.DataFrame(columns=self.get_metric_names())
+
+    @staticmethod
+    def clear_local_sample_metrics(population_dir: Path) -> None:
+        """
+        Clear metrics from local storage, will clear all sample metrics
+        associated with the specified population directory.
+
+        Args:
+            population_dir (path): Name of the population to be cleared.
+        """
+        # TODO: Only remove row independent metrics
+        file_path = population_dir / SampleMetricManager.PICKLE_METRICS_NAME
+        if file_path.is_file():
+            file_path.unlink()

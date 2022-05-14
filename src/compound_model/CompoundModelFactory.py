@@ -1,4 +1,5 @@
-from typing import Type, Any
+from typing import Union, Type, Any
+import pandas as pd
 from src.filter.Filter import Filter
 from src.controller.Controller import Controller
 from src.metric.CompoundMetricManager import CompoundMetricManager
@@ -62,19 +63,15 @@ class CompoundModelFactory:
         )
         self._population = Population(self._name)
 
-        # Define metric related objects, one manager for each compound model
-        self._smms = {
-            filter.get_name(): SampleMetricManager(
-                sample_metrics, self._population, self._dataset
-            )
-            for filter in self._filters
-        }
+        # Define metric related objects
+        self._smm = SampleMetricManager(sample_metrics, self._population, self._dataset)
+
         self._cmms = {
             filter.get_name(): CompoundMetricManager(
                 compound_metrics,
                 self._population,
                 self._dataset,
-                self._smms[filter.get_name()],
+                self._smm,
                 controller,
                 filter.get_bit(FilterRegistry),
             )
@@ -247,8 +244,9 @@ class CompoundModelFactory:
             **random_input,
         )
 
-        # Clear compound metrics
+        # Clear metrics
         self._clear_compound_metrics(self._population.get_name())
+        self._clear_sample_metrics(self._population.get_name())
 
     def _clear_compound_metrics(self, population_name: str) -> None:
         # Clear compound metrics from manager
@@ -257,8 +255,20 @@ class CompoundModelFactory:
             if population_name == cmm.get_population().get_name():
                 cmm.clear_compound_metrics()
 
-        # Clear locally stored compound metrics from population
+        # Clear locally stored metrics from population
         CompoundMetricManager.clear_local_compound_metrics(population_name)
+        SampleMetricManager.clear_local_sample_metrics(
+            Population.POPULATION_ROOT_DIR / population_name
+        )
+
+    def _clear_sample_metrics(self, population_name: str) -> None:
+        # Clear compound metrics from manager
+        self._smm.clear_sample_metrics()
+
+        # Clear locally stored compound metrics from population
+        self._smm.clear_local_sample_metrics(
+            self._smm.get_population().POPULATION_ROOT_DIR / population_name
+        )
 
     def evaluate_compound_models(
         self,
@@ -318,7 +328,7 @@ class CompoundModelFactory:
 
         # Apply filter
         # TODO: Implement a smart check if filter already applied
-        self._population.apply_filter(filter, self._smms[filter.get_name()])
+        self._population.apply_filter(filter, self._smm)
 
         # Calc all
         if recalculate_metrics:
