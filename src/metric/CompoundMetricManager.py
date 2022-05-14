@@ -263,6 +263,7 @@ class CompoundMetricManager:
         """
         self._metrics.loc[0, :] = np.nan
 
+    @staticmethod
     def clear_local_compound_metrics(population_name: str) -> None:
         """
         Clear metrics from local storage, will clear all compound metrics in
