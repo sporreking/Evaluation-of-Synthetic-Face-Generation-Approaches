@@ -26,7 +26,7 @@ class IdentityController(Controller):
                 Not used for image generation. Default is None.
 
         """
-        super().__init__(IDENTITY_NAME, gen)
+        super().__init__(IDENTITY_NAME, gen, attributes)
 
     def reg_setup_modes(self) -> dict[str, SetupMode]:
         return {}
