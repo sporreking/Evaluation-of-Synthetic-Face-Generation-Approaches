@@ -92,7 +92,7 @@ class LSCompoundMetric(CompoundMetric):
                         mn_cls(attr, False)
                     ),
                     required_modes=[],
-                    batch_size=64,
+                    batch_size=48,
                     epochs=40,
                 )
                 for attr in controller._attrs
@@ -107,7 +107,7 @@ class LSCompoundMetric(CompoundMetric):
                         gen_name, controller.get_name()
                     ): is_labels_ready(attr, pop_name),
                     required_modes=[SETUP_POPULATION_NAME, mn_cls(attr)],
-                    batch_size=64,
+                    batch_size=48,
                     epochs=40,
                 )
                 for attr in controller._attrs

@@ -95,7 +95,7 @@ class InterFaceGANController(Controller):
                     lambda attr=attr: load_aux_best(mn_cls(attr, False)) is not None,
                     lambda attr=attr: self._setup_info_func(mn_cls(attr, False)),
                     required_modes=[],
-                    batch_size=64,
+                    batch_size=48,
                     epochs=40,
                 )
                 for attr in self._attrs
@@ -110,7 +110,7 @@ class InterFaceGANController(Controller):
                         gen_name, controller.get_name()
                     ): is_labels_ready(attr, pop_name),
                     required_modes=[SETUP_POPULATION_NAME, mn_cls(attr)],
-                    batch_size=64,
+                    batch_size=48,
                     epochs=40,
                 )
                 for attr in self._attrs
