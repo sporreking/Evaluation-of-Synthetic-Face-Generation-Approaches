@@ -22,7 +22,7 @@ class SampleMetricManager:
     def __init__(
         self,
         sample_metrics: list[Type],
-        population: Population,
+        population: Union[Population, None],
         dataset: Dataset,
     ):
         """
@@ -35,7 +35,8 @@ class SampleMetricManager:
 
         Args:
             sample_metrics (list[Type]): SampleMetrics that this manager should support.
-            population (Population): The population on which the metrics should be applied.
+            population (Population | None): The population on which the metrics should be applied.
+                If `None`, no metric activity may be performed, but setups are still possible.
             dataset (Dataset): A dataset that may be used by the different
                 SampleMetrics to derive their results.
 
@@ -58,6 +59,10 @@ class SampleMetricManager:
 
         # Create storage
         self._metrics = pd.DataFrame(columns=self.get_metric_names())
+
+        # If there is no population, metrics will not be saved to disk
+        if population is None:
+            return
 
         # Get already saved metrics from disk
         self._file_jar_path = (
@@ -84,13 +89,14 @@ class SampleMetricManager:
         """
         return list(self._sample_metrics.values())
 
-    def get_population(self) -> Population:
+    def get_population(self) -> Union[Population, None]:
         """
         Returns the dedicated population of this manager. This value
         was assigned upon the manger's instantiation.
 
         Returns:
-            Population: The population of this manager.
+            Population: The population of this manager, or `None` if no
+                population was supplied upon construction.
         """
         return self._population
 
@@ -228,8 +234,12 @@ class SampleMetricManager:
                 This can only happen if `calc_if_missing=True`.
             ValueError: If the result from a metric does not contain precisely one
                 result for each requested sample. This can only happen if `calc_if_missing=True`.
-
+            RuntimeError: If the manager has no population, i.e., `None` was supplied upon construction.
         """
+
+        if self._population is None:
+            raise RuntimeError("The manager has no population!")
+
         # Adjust input
         metric_names, ids = self._parse_input(
             metric_names, ids, check_calc=not calc_if_missing
@@ -286,7 +296,11 @@ class SampleMetricManager:
             ValueError: If the result from a metric calculation is not a numpy array.
             ValueError: If the result from a metric does not contain precisely one
                 result for each requested sample.
+            RuntimeError: If the manager has no population, i.e., `None` was supplied upon construction.
         """
+
+        if self._population is None:
+            raise RuntimeError("The manager has no population!")
 
         # Adjust input
         metric_names, ids = self._parse_input(metric_names, ids, check_calc=False)
