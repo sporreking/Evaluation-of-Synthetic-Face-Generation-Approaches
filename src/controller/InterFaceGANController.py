@@ -7,7 +7,7 @@ from src.controller.SupportVectorClassifier import (
     get_svc_names,
     get_missing_model_names,
     setup_population,
-    setup_auxillary,
+    setup_auxiliary,
     setup_labels,
     train_svc,
     get_svc,
@@ -89,7 +89,7 @@ class InterFaceGANController(Controller):
             **{
                 mn_cls(attr): SetupMode(
                     False,
-                    lambda _, batch_size, epochs, attr=attr: self._setup_auxillary_classifier(
+                    lambda _, batch_size, epochs, attr=attr: self._setup_auxiliary_classifier(
                         attr, batch_size, epochs
                     ),
                     lambda attr=attr: load_aux_best(mn_cls(attr, False)) is not None,
@@ -135,7 +135,7 @@ class InterFaceGANController(Controller):
         """
         setup_population(IdentityController(self._gen))
 
-    def _setup_auxillary_classifier(
+    def _setup_auxiliary_classifier(
         self, attr: str, batch_size: int = 64, epochs: int = 40
     ) -> None:
         """
@@ -144,7 +144,7 @@ class InterFaceGANController(Controller):
 
         Trained classifiers are saved according to ASADController.
         """
-        setup_auxillary(attr, self.get_generator().get_dataset(), batch_size, epochs)
+        setup_auxiliary(attr, self.get_generator().get_dataset(), batch_size, epochs)
 
     def _setup_training_labels(
         self, attr: str, batch_size: int = 64, epochs: int = 40
@@ -152,7 +152,7 @@ class InterFaceGANController(Controller):
         """
         Setup labels given a auxiliary classifier (Will train one if missing.)
 
-        See documentation for `_setup_auxillary_classifier` and the ASADController
+        See documentation for `_setup_auxiliary_classifier` and the ASADController
         class for more information about the classifier.
         """
         controller = IdentityController(
