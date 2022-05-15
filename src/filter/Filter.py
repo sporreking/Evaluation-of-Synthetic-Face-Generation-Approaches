@@ -15,8 +15,31 @@ class Filter(Setupable, metaclass=abc.ABCMeta):
     of filters.
     """
 
-    def __new__(cls):
-        raise RuntimeError(f"{cls.__name__} should not be instantiated.")
+    def __init__(self, _setup_only: bool = False, smm: SampleMetricManager = None):
+        """
+        Filters are supposed to be used statically, but instances are required
+        for performing setups. To ensure that the instance is only used for
+        this purpose, the flag `_setup_only` must be set to `True` for the
+        instantiation to work without causing an exception.
+
+        Args:
+            _setup_only (bool, mandatory): Must be True. Defaults to False.
+            smm (SampleMetricManager, mandatory): A sample metric manager to
+                use for the setup.
+
+        Raises:
+            RuntimeError: If the `_setup_only` flag was not set to `True`.
+            ValueError: If `smm=None` (the default value).
+        """
+        if not _setup_only:
+            raise RuntimeError(
+                "Filters may only be instantiated for the purpose of performing setups!"
+            )
+
+        if smm is None:
+            raise ValueError("No sample metric manager was provided!")
+
+        self._smm = smm
 
     @classmethod
     def get_bit(cls, filter_registry: Type[FilterRegistry]):
@@ -43,7 +66,7 @@ class Filter(Setupable, metaclass=abc.ABCMeta):
         Returns the name of the filter.
 
         Returns:
-            str: name of the filter.
+            str: The name of the filter.
         """
 
     @staticmethod
