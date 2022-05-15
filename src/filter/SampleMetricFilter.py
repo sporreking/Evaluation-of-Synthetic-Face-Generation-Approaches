@@ -19,24 +19,29 @@ class SampleMetricFilter(Filter, metaclass=abc.ABCMeta):
     of sample metric filters.
     """
 
-    def __new__(cls):
-        raise RuntimeError(f"{cls.__name__} should not be instantiated.")
-
-    @classmethod
-    def sample_metric_reg_setup_modes(cls) -> dict[str, SetupMode]:
+    def sample_metric_reg_setup_modes(self) -> dict[str, SetupMode]:
         """
-        Returns setup modes for all relevent sample metrics.
+        Returns setup modes for all relevant sample metrics.
 
-        # ! Note that if setup modes for sample metrics have the same name
-        # then only one of them (the last added) will be kept.
+        Note that if setup modes for sample metrics have the same name
+        then only one of them (the last added) will be kept.
 
         Returns:
             dict[str, SetupMode]: The setup modes.
         """
         setup_modes = {}
+        metric_instances = self._smm.get_metric_instances()
         # Merge all setup modes
-        for sm in cls.get_used_sample_metrics():
-            setup_modes |= sm.reg_setup_modes()
+        for smt in self.get_used_sample_metrics():
+            sm_li = list(filter(lambda m: isinstance(m, smt), metric_instances))
+            if len(sm_li) <= 0:
+                raise RuntimeError(
+                    "The filter's sample metric manager does not contain "
+                    + f"sample metric '{smt.get_name()}' (required for performing "
+                    + f"setup of '{self.get_name()}')."
+                )
+            setup_modes |= sm_li[0].reg_setup_modes()
+
         return setup_modes
 
     @staticmethod
@@ -61,9 +66,8 @@ class SampleMetricFilter(Filter, metaclass=abc.ABCMeta):
             plt.imshow(np.asarray(m))
             plt.show(block=True)
 
-    @staticmethod
     @abc.abstractmethod
-    def get_used_sample_metrics() -> list[Type[SampleMetric]]:
+    def get_used_sample_metrics(self) -> list[Type[SampleMetric]]:
         """
         Returns a list of the used sample metrics.
 

@@ -78,5 +78,5 @@ class DatasetSimilarityFilter(SampleMetricFilter):
     def get_name():
         return DATASET_SIMILARITY_FILTER_NAME
 
-    def get_used_sample_metrics() -> list[Type[SampleMetric]]:
+    def get_used_sample_metrics(self) -> list[Type[SampleMetric]]:
         return [DatasetSimilaritySampleMetric]
