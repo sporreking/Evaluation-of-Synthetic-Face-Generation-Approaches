@@ -15,7 +15,7 @@ from src.controller.SupportVectorClassifier import (
     get_svc_names,
     get_missing_model_names,
     setup_population,
-    setup_auxillary,
+    setup_auxiliary,
     setup_labels,
     train_svc,
     get_svc,
@@ -84,7 +84,7 @@ class LSCompoundMetric(CompoundMetric):
             **{
                 mn_cls(attr): SetupMode(
                     False,
-                    lambda _, batch_size, epochs, attr=attr: self._setup_auxillary_classifier(
+                    lambda _, batch_size, epochs, attr=attr: self._setup_auxiliary_classifier(
                         attr, batch_size, epochs
                     ),
                     lambda attr=attr: load_aux_best(mn_cls(attr, False)) is not None,
@@ -134,7 +134,7 @@ class LSCompoundMetric(CompoundMetric):
         """
         setup_population(self._cmm.get_controller())
 
-    def _setup_auxillary_classifier(
+    def _setup_auxiliary_classifier(
         self, attr: str, batch_size: int = 64, epochs: int = 40
     ) -> None:
         """
@@ -143,7 +143,7 @@ class LSCompoundMetric(CompoundMetric):
 
         Trained classifiers are saved according to ASADController.
         """
-        setup_auxillary(attr, self.get_dataset(), batch_size, epochs)
+        setup_auxiliary(attr, self.get_dataset(), batch_size, epochs)
 
     def _setup_training_labels(
         self, attr: str, batch_size: int = 64, epochs: int = 40
@@ -151,7 +151,7 @@ class LSCompoundMetric(CompoundMetric):
         """
         Setup labels given a auxiliary classifier (Will train one if missing.)
 
-        See documentation for `_setup_auxillary_classifier` and the ASADController
+        See documentation for `_setup_auxiliary_classifier` and the ASADController
         class for more information about the classifier.
         """
         setup_labels(self._cmm.get_controller(), attr, batch_size, epochs)

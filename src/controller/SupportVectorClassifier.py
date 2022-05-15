@@ -21,7 +21,7 @@ import torch
 import time
 
 #! Setup function should be run in order:
-#! setup_population -> setup_auxillary -> setup_labels -> train_svc
+#! setup_population -> setup_auxiliary -> setup_labels -> train_svc
 # File handling constants
 SVC_PREFIX = "SVC"
 SVC_DIR = Path() / "auxiliary"
@@ -178,7 +178,7 @@ def setup_population(controller: Controller) -> None:
         _populate_population(Population(pop_name), controller)
 
 
-def setup_auxillary(
+def setup_auxiliary(
     attr: str, ds: Dataset, batch_size: int = 64, epochs: int = 40
 ) -> None:
     """
@@ -222,7 +222,7 @@ def setup_labels(
 
     Args:
         controller (Controller): Controller associated with the use of the
-            auxillary model.
+            auxiliary model.
         attr (str): The attribute of the labels, coincide with the attribute of
             the auxiliary classifier.
         batch_size (int,optional): Batch size used for predicting labels with classifier.
