@@ -72,7 +72,7 @@ class ASADController(Controller):
                     ),
                     lambda attr=attr: load_aux_best(mn_cls(attr, False)) is not None,
                     lambda attr=attr: self._setup_info_func(mn_cls(attr, False)),
-                    batch_size=64,
+                    batch_size=48,
                     epochs=40,
                 )
                 for attr in self._attrs
