@@ -1,22 +1,6 @@
-from src.dataset.DatasetRegistry import DatasetRegistry
-from src.dataset.Dataset import Dataset
-
 from src.controller.ControllerRegistry import ControllerRegistry
-from src.controller.Controller import Controller
-
-from src.generator.GeneratorRegistry import GeneratorRegistry
-from src.generator.Generator import Generator
-
-from src.metric.SampleMetricRegistry import SampleMetricRegistry
 from src.metric.SampleMetricManager import SampleMetricManager
-from src.metric.SampleMetric import SampleMetric
-
-from src.filter.FilterRegistry import FilterRegistry
-from src.filter.Filter import Filter
-
-from src.metric.CompoundMetricRegistry import CompoundMetricRegistry
 from src.metric.CompoundMetricManager import CompoundMetricManager
-from src.metric.CompoundMetric import CompoundMetric
 
 from src.core.Setupable import Setupable
 
@@ -24,7 +8,16 @@ import src.util.PromptUtil as PU
 
 from typing import Any
 
-from src.phase_utils import get_prompt_save_file_name, confirm_lists
+from src.phase_utils import (
+    confirm_lists,
+    select_dataset,
+    select_attributes,
+    select_controllers,
+    select_generators,
+    select_sample_metrics,
+    select_filters,
+    select_compound_metrics,
+)
 
 
 def setup_phase() -> None:
@@ -33,13 +26,13 @@ def setup_phase() -> None:
     """
 
     # * Initial setupable selection
-    dataset = _select_dataset()
-    attributes = _select_attributes(dataset)
-    controller_names, controller_types = _select_controllers()
-    generator_names, generator_types = _select_generators()
-    sample_metric_names, sample_metrics_types = _select_sample_metrics()
-    filter_names, filter_types = _select_filters()
-    compound_metric_names, compound_metrics_types = _select_compound_metrics()
+    dataset = select_dataset()
+    attributes = select_attributes(dataset)
+    controller_names, controller_types = select_controllers()
+    generator_names, generator_types = select_generators()
+    sample_metric_names, sample_metrics_types = select_sample_metrics()
+    filter_names, filter_types = select_filters()
+    compound_metric_names, compound_metrics_types = select_compound_metrics()
 
     # * Final presentation before config
     if not confirm_lists(
@@ -511,77 +504,3 @@ def _select_setup_modes(
         [setupable_names[i] for i in setupable_selection],
         setupable_config,
     )
-
-
-def _select_dataset() -> Dataset:
-    ds_name = PU.prompt_options("Select a dataset to use:", DatasetRegistry.get_names())
-    ds_type = DatasetRegistry.get_resource(ds_name)
-    ds_resolution = PU.prompt_options(
-        f"Select a valid resolution for dataset '{ds_type.get_resolution_invariant_name()}':",
-        DatasetRegistry.get_available_resolutions(ds_name),
-    )
-
-    return ds_type(ds_resolution)
-
-
-def _select_attributes(ds: Dataset) -> list[str]:
-    return PU.prompt_multi_options(
-        "What attributes should be used?",
-        ds.get_labels().columns,
-        default_file=get_prompt_save_file_name(
-            f"attributes_{ds.get_name(ds.get_resolution())}"
-        ),
-    )
-
-
-def _select_controllers() -> tuple[list[str], list[type[Controller]]]:
-    controller_names = PU.prompt_multi_options(
-        "What controllers should be used?",
-        ControllerRegistry.get_names(),
-        default_file=get_prompt_save_file_name("controllers"),
-    )
-    return controller_names, [
-        ControllerRegistry.get_resource(name) for name in controller_names
-    ]
-
-
-def _select_generators() -> tuple[list[str], list[type[Generator]]]:
-    generator_names = PU.prompt_multi_options(
-        "What generators should be used?",
-        GeneratorRegistry.get_names(),
-        default_file=get_prompt_save_file_name("generators"),
-    )
-    return generator_names, [
-        GeneratorRegistry.get_resource(name) for name in generator_names
-    ]
-
-
-def _select_sample_metrics() -> tuple[list[str], list[type[SampleMetric]]]:
-    sample_metric_names = PU.prompt_multi_options(
-        "What sample metrics should be used?",
-        SampleMetricRegistry.get_names(),
-        default_file=get_prompt_save_file_name("sample_metrics"),
-    )
-    return sample_metric_names, [
-        SampleMetricRegistry.get_resource(name) for name in sample_metric_names
-    ]
-
-
-def _select_filters() -> tuple[list[str], list[type[Filter]]]:
-    filter_names = PU.prompt_multi_options(
-        "What filters should be used?",
-        FilterRegistry.get_names(),
-        default_file=get_prompt_save_file_name("filters"),
-    )
-    return filter_names, [FilterRegistry.get_resource(name) for name in filter_names]
-
-
-def _select_compound_metrics() -> tuple[list[str], list[type[CompoundMetric]]]:
-    compound_metric_names = PU.prompt_multi_options(
-        "What compound metrics should be used?",
-        CompoundMetricRegistry.get_names(),
-        default_file=get_prompt_save_file_name("compound_metrics"),
-    )
-    return compound_metric_names, [
-        CompoundMetricRegistry.get_resource(name) for name in compound_metric_names
-    ]
