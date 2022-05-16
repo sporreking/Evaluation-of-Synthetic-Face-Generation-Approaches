@@ -206,7 +206,9 @@ class Population:
                 passed.
             append (bool, optional): If `True`, the samples will be appended onto the
                 existing population. Otherwise, all current samples will be replaced.
-                Defaults to True.
+                Note that images to which URIs of replaced samples point are not removed
+                from disk - only the references to them will be dropped. New samples are
+                free to override the old images on disk. Defaults to True.
             save_to_disk (bool, optional): If `True`, the population will be saved to
                 disk when the samples have been added, and the files referenced by `uris`
                 will be moved to the population directory. Defaults to True.
@@ -250,7 +252,7 @@ class Population:
         start_index = np.max(self._data.index) + 1 if len(self._data) > 0 else 0
         ids = None
         if save_to_disk:
-            ids, uris = self._move_images(uris, start_index, append)
+            ids, uris = self._move_images(uris, start_index, False)
         else:
             ids, uris = range(start_index, start_index + len(uris)), uris
 
@@ -326,7 +328,9 @@ class Population:
                 sample has passed. Defaults to 0.
             append (bool, optional): If `True`, this sample will be appended onto the
                 existing population. Otherwise, all current samples will be replaced.
-                    Defaults to True.
+                Note that images to which URIs of replaced samples point are not removed
+                from disk - only the references to them will be dropped. New samples are
+                free to override the old images on disk. Defaults to True.
             save_to_disk (bool, optional): If `True`, the population will be saved to
                 disk when the sample has been added, and the file referenced by `uri`
                 will be moved to the population directory. Defaults to True.
@@ -360,7 +364,7 @@ class Population:
         start_index = np.max(self._data.index) + 1 if len(self._data) > 0 else 0
         ids, uris = None, None
         if save_to_disk:
-            ids, uris = self._move_images([uri], start_index, append)
+            ids, uris = self._move_images([uri], start_index, False)
         else:
             ids, uris = [start_index], [uri]
 
