@@ -5,6 +5,7 @@ import sys
 
 from src.init_phase import init_phase, init_done
 from src.setup_phase import setup_phase
+from src.generation_phase import generation_phase
 
 import src.util.PromptUtil as PU
 
@@ -58,6 +59,16 @@ def _setup_wrapper(name: str, argv: list = None) -> None:
     setup_phase()
 
 
+def _generation_wrapper(name: str, argv: list = None) -> None:
+    # Require init phase
+    _require_phase(name, "init", init_done)
+
+    #! Setup phase check depends on selection (i.e., it cannot be checked here)
+
+    # Execute generation phase
+    generation_phase()
+
+
 ##########################
 # Core argument handling #
 ##########################
@@ -66,6 +77,7 @@ def _setup_wrapper(name: str, argv: list = None) -> None:
 phases = {
     "init": _init_wrapper,
     "setup": _setup_wrapper,
+    "generate": _generation_wrapper,
 }
 
 # Parser core arguments
