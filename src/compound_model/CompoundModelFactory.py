@@ -385,20 +385,20 @@ class CompoundModelFactory:
 
         # Calc missing
         else:
-            msg = f"# Trying to fetch metrics #"
-            print(len(msg) * "#")
+            msg = f"| Trying to fetch metrics |"
+            print(len(msg) * "-")
             print(msg)
-            print(len(msg) * "#")
+            print(len(msg) * "-")
             self._cmms[filter.get_name()].get(
                 compound_metrics,
                 calc_if_missing=True,
                 **parameters,
             )
 
-        msg = "# Metric Evaluation complete #"
-        print(len(msg) * "#")
+        msg = "| Metric Evaluation complete |"
+        print(len(msg) * "-")
         print(msg)
-        print(len(msg) * "#")
+        print(len(msg) * "-")
 
     def get_filters(self) -> list[Type[Filter]]:
         """
@@ -435,6 +435,28 @@ class CompoundModelFactory:
             Population: The population.
         """
         return self._population
+
+    def get_controller(self) -> Controller:
+        """
+        Returns the controller of this compound model factory.
+
+        Returns:
+            Controller: The controller of this compound model factory.
+        """
+        return self._controller
+
+    def get_compound_metric_managers(self) -> list[CompoundMetricManager]:
+        """
+        Returns the compound metric managers of this compound model factory.
+
+        There should be precisely one compound metric manager for each filter
+        supplied on construction, i.e.,
+        `len(get_filters()) == len(get_compound_metric_managers())`.
+
+        Returns:
+            list[CompoundMetricManager]: The compound metric managers.
+        """
+        return [cmm for cmm in self._cmms.values()]
 
     def get_compound_model_names(self) -> list[str]:
         """
