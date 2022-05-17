@@ -19,6 +19,10 @@ class IdentityFilter(Filter):
     def reg_setup_modes(self) -> dict[str, SetupMode]:
         return {}
 
+    @staticmethod
+    def get_bit() -> int:
+        return 1
+
     def apply(smm: SampleMetricManager):
         # Every sample passes
         return smm.get_population().get_data().index

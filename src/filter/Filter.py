@@ -1,11 +1,10 @@
 from __future__ import annotations
 import pandas as pd
 import abc
-from typing import TYPE_CHECKING, Type, Any
+from typing import TYPE_CHECKING, Any
 from src.core.Setupable import Setupable
 
 if TYPE_CHECKING:
-    from src.filter.FilterRegistry import FilterRegistry
     from src.metric.SampleMetricManager import SampleMetricManager
 
 
@@ -41,23 +40,16 @@ class Filter(Setupable, metaclass=abc.ABCMeta):
 
         self._smm = smm
 
-    @classmethod
-    def get_bit(cls, filter_registry: Type[FilterRegistry]):
+    @staticmethod
+    @abc.abstractmethod
+    def get_bit() -> int:
         """
-        Returns the bit associated with the filter.
-
-        The order of the bits are analogous to the order of filters in the `filter_registry`.
-
-        Args:
-            filter_registry (Type[FilterRegistry]): The filter registry to infer ordering from.
+        Should return the bit associated with the filter.
 
         Returns:
             int: The bit representing this filter.
         """
-        filters = filter_registry.get_resources()
-        for id, filter in enumerate(filters):
-            if cls == filter:
-                return 1 << id
+        pass
 
     @staticmethod
     @abc.abstractmethod

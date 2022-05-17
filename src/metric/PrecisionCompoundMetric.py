@@ -59,8 +59,7 @@ class PrecisionCompoundMetric(CompoundMetric):
 
         Args:
             filter_bit (int, optional): Filter bit used to select a subset of the
-                population. Filter bit is defined by the order in FilterRegistry. For example,
-                the first filter corresponds to filter bit 1. Defaults to 1 (IdentityFilter).
+                population. Defaults to 1 (IdentityFilter).
             batch_size (int, optional): The batch size to use when projecting images
                 through the VGG16-network on the GPU. Defaults to `BATCH_SIZE`.
             dist_calc_batch_size (int, optional): The batch size to use when calculating

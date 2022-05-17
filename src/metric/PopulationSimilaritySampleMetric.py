@@ -2,13 +2,14 @@ from __future__ import annotations
 from src.metric.SampleMetric import SampleMetric
 import src.metric.MatchingScore as MS
 from src.core.Setupable import SetupMode
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Callable
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 if TYPE_CHECKING:
     from src.metric.SampleMetricManager import SampleMetricManager
+    from src.population.Population import Population
 
 
 POPULATION_SIMILARITY_NAME = "PopulationSimilarity"
@@ -54,6 +55,7 @@ class PopulationSimilaritySampleMetric(SampleMetric):
 
         Args:
             ids (pd.Index): The indices of the samples to calculate for.
+            filter_bit (int): Filter bit used for filtering the population.
             k (int, optional): The number of most-similar neighbors to find.
                 Defaults to 2.
 
@@ -63,6 +65,7 @@ class PopulationSimilaritySampleMetric(SampleMetric):
                 scores and IDs of the `k` most similar samples (see aforementioned
                 format).
         """
+        filter_bit = parameters["filter_bit"] if "filter_bit" in parameters else 1
 
         # Get parameter
         k = (
@@ -70,7 +73,10 @@ class PopulationSimilaritySampleMetric(SampleMetric):
         )  #! Default (should match docstring)
 
         # Get data
-        df = self._population.get_data()
+        df = self._population.get_filtered_data(filter_bit)
+
+        # Update ids according to filter
+        ids = [id for id in ids if id in df.index]
 
         # Fetch samples to calculate for
         uris = list(df[self._population.COLUMN_URI])
@@ -87,12 +93,22 @@ class PopulationSimilaritySampleMetric(SampleMetric):
             range(target_projections.shape[0]), desc="Calculating similarity scores"
         ):
             similarities = target_projections[i, :].dot(sample_projections.T).flatten()
-            similarities[ids[i]] = -float("inf")  # Do not check similarity with self
+            similarities[df.index.get_loc(ids[i])] = -float(
+                "inf"
+            )  # Do not check similarity with self
             raw_ids = np.argsort(similarities)[-k:][::-1]
             val = np.array(
                 [[df.index[raw_id], similarities[raw_id]] for raw_id in raw_ids]
             )
-            output[i] = val
+            output[i] = [{filter_bit: val}]
 
-        # Return similarity scores between samples and dataset
+        # Update
+        data_to_be_updated = self._smm.get(
+            [self.get_name()], ids=ids, skip_if_missing=True
+        )
+        for id in data_to_be_updated.index:
+            i = df.index.get_loc(id)
+            output[i] = [data_to_be_updated.loc[id].values[0][0] | output[i][0]]
+
+        # Return similarity scores between sample and their population
         return output

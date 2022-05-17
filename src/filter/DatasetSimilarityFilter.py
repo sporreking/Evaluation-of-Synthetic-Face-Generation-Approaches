@@ -27,6 +27,10 @@ class DatasetSimilarityFilter(SampleMetricFilter):
     def reg_setup_modes(self) -> dict[str, SetupMode]:
         return self.sample_metric_reg_setup_modes()
 
+    @staticmethod
+    def get_bit() -> int:
+        return 2
+
     def apply(smm: SampleMetricManager, **parameters: Any) -> pd.index:
         """
         Applies filter on population contained in given sample metric manager.
@@ -54,10 +58,11 @@ class DatasetSimilarityFilter(SampleMetricFilter):
             else False
         )
 
-        # Get metric value
-        ds_sim = smm.get(
-            [DatasetSimilaritySampleMetric.get_name()], calc_if_missing=True
-        ).astype(float)
+        # Calc metric value
+        smm.calc(
+            [DatasetSimilaritySampleMetric.get_name()],
+        )
+        ds_sim = smm.get([DatasetSimilaritySampleMetric.get_name()]).astype(float)
 
         # Get threshold
         threshold = (

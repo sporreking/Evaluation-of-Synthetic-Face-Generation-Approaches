@@ -3,10 +3,9 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 from typing import Union, Type, TYPE_CHECKING
-
 from src.util.FileJar import FileJar
 from src.filter.Filter import Filter
-from src.filter.FilterRegistry import FilterRegistry
+
 
 if TYPE_CHECKING:
     from src.metric.SampleMetricManager import SampleMetricManager
@@ -204,8 +203,7 @@ class Population:
                 on a per-row basis.
             uris (list[str]): Paths leading to the sample images.
             filter_bitmaps (list[int]): Bitmaps describing what filters the samples have
-                passed. The order of the bits are analogous to the order of filter
-                appearance in the FilterRegistry.
+                passed.
             append (bool, optional): If `True`, the samples will be appended onto the
                 existing population. Otherwise, all current samples will be replaced.
                 Defaults to True.
@@ -325,8 +323,7 @@ class Population:
                 the `attributes` input to become `latent_code`.
             uri (str): A path leading to the sample image.
             filter_bitmap (int, optional): A bitmap describing what filters this
-                sample has passed. The order of the bits are analogous to the order of
-                filter appearance in the FilterRegistry. Defaults to 0.
+                sample has passed. Defaults to 0.
             append (bool, optional): If `True`, this sample will be appended onto the
                 existing population. Otherwise, all current samples will be replaced.
                     Defaults to True.
@@ -427,8 +424,6 @@ class Population:
 
         Args:
             mask (int): A bitmap with '1' for all filters that the samples must pass.
-                The order of the bits are analogous to the order of filters
-                in the FilterRegistry.
 
         Returns:
             pd.DataFrame: The filtered samples.
@@ -447,8 +442,6 @@ class Population:
 
         Args:
             mask (int): A bitmap with '1' for all filters that the samples must pass.
-                The order of the bits are analogous to the order of filters
-                in the FilterRegistry
 
         Returns:
             list[bool]: The filtering indices as a boolean list, True if indices passed,
@@ -479,7 +472,7 @@ class Population:
 
         # Update bitmap for the passing samples
         # Set filter bit to 1 in bitmap
-        bit = filter.get_bit(FilterRegistry)
+        bit = filter.get_bit()
         ind = filter.apply(smm)
         self._data[self.COLUMN_FILTER_BITMAP][ind] = self._data[
             self.COLUMN_FILTER_BITMAP

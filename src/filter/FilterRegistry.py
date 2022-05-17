@@ -22,14 +22,11 @@ class FilterRegistry(Registry):
     Registry used for initialization and storing of all subclasses of the
     filter class.
 
-    Note that order of filter corresponds what bit in the bitmap
-    that filter is associated with.
-
     * If more filters are implemented they must be manually added
     to the internal storage (`_FILTERS`) of this class.
     """
 
-    _FILTERS = {  #! IdentityFilter must be the first entry in this list - do not change its location
+    _FILTERS = {
         IDENTITY_FILTER_NAME: IdentityFilter,
         DATASET_SIMILARITY_FILTER_NAME: DatasetSimilarityFilter,
         POPULATION_SIMILARITY_FILTER_NAME: PopulationSimilarityFilter,

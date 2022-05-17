@@ -94,8 +94,7 @@ class PPLCompoundMetric(CompoundMetric):
         #! Note that there must be at least two samples in the population.
         Args:
             filter_bit (int, optional): Filter bit used to select a subset of the
-                population. Filter bit is defined by the order in FilterRegistry. For example,
-                the first filter corresponds to filter bit 1. Defaults to 1 (IdentityFilter).
+                population. Defaults to 1 (IdentityFilter).
             batch_size (int, optional): Batch size used to calculate the PPL.
                 Note that batch size must be even!
                 Defaults to `BATCH_SIZE`.
