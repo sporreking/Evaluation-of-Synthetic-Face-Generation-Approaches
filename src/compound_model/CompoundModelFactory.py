@@ -80,7 +80,10 @@ class CompoundModelFactory:
         # Define context
         self._context = None
 
-    def apply_filters(self) -> None:
+    def apply_filters(
+        self,
+        filters: Union[Type[Filter], list[Type[Filter]]] = None,
+    ) -> None:
         """
         Apply filters to the population.
 
@@ -89,9 +92,20 @@ class CompoundModelFactory:
         before evaluation.
 
         Note that this should be done before calling any evaluate functions.
+
+        Args:
+            filters (Type[Filter] | list[Type[Filter]], optional): Selection of filters to apply, must be subset
+                of the filters that were specified on construction, see `get_filters()`.
+                `filters` can either be a filter, a list of filters or `None` which will result in the use of all available filters.
+                Defaults to None.
         """
+
+        if isinstance(filters, type(Filter)):
+            filters = [filters]
+
         for filter in self._filters:
-            self._population.apply_filter(filter, self._smm)
+            if filter is None or filter in filters:
+                self._population.apply_filter(filter, self._smm)
 
     def give_context(self, context: CompoundModelFactoryContext) -> None:
         """
