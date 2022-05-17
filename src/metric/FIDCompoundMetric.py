@@ -152,8 +152,7 @@ class FIDCompoundMetric(CompoundMetric):
 
         Args:
             filter_bit (int, optional): Filter bit used to select a subset of the
-                population. Filter bit is defined by the order in FilterRegistry. For example,
-                the first filter corresponds to filter bit 1. EDefaults to 1 (IdentityFilter).
+                population. Defaults to 1 (IdentityFilter).
             calc_mode (str, optional): Either "clean", "legacy_tensorflow, or "legacy_pytorch".
                 This decides how the FID score should be calculated, i.e., using clean-fid,
                 regular tensorflow implementation, or pytorch implementation. Default is "clean" (clean-fid).

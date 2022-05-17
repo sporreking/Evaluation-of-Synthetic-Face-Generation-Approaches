@@ -1,14 +1,16 @@
 from __future__ import annotations
-
 import src.metric.CompoundMetric as CompoundMetric
 from src.metric.SampleMetricManager import SampleMetricManager
 from src.population.Population import Population
 from src.dataset.Dataset import Dataset
 from src.util.FileJar import FileJar
 from src.controller.Controller import Controller
-from typing import Union, Any, Type
+from typing import Union, Any, Type, TYPE_CHECKING
 import pandas as pd
 import numpy as np
+
+if TYPE_CHECKING:
+    from src.compound_model.CompoundModelFactory import CompoundModelFactoryContext
 
 
 class CompoundMetricManager:
@@ -46,8 +48,7 @@ class CompoundMetricManager:
             smm (SampleMetricManager): Used for calculating per-sample metrics.
             controller (Controller): The controller associated with the population.
             filter_bit (int): Filter bit used to select a subset of the
-                population. Filter bit is defined by the order in FilterRegistry. For example,
-                the first filter (IdentityFilter) corresponds to filter bit 1.
+                population.
 
         Raises:
             ValueError: If any of the items passed to `metrics` is not
@@ -63,6 +64,7 @@ class CompoundMetricManager:
         self._smm = smm
         self._controller = controller
         self._filter_bit = filter_bit
+        self._context = None
 
         # Construct metrics
         compound_metrics_con = [metric(self, smm) for metric in compound_metrics]
@@ -94,6 +96,18 @@ class CompoundMetricManager:
             for column in file_jar_metrics:
                 if column in self._metrics:
                     self._metrics[column] = file_jar_metrics[column]
+
+    def give_context(self, context: CompoundModelFactoryContext) -> None:
+        """
+        Give the manager a context of other compound models.
+
+        Args:
+            context (CompoundModelFactoryContext): The context to give to the manager.
+        """
+        self._context = context
+
+    def get_context(self) -> CompoundModelFactoryContext:
+        return self._context
 
     def get_metric_instances(self) -> list[CompoundMetric.CompoundMetric]:
         """
@@ -195,7 +209,13 @@ class CompoundMetricManager:
             for metric_name in metric_names:
 
                 # Check if value is NaN
-                if np.isnan(self._metrics.loc[0, metric_name]):
+                val = self._metrics.loc[0, metric_name]
+                val_is_nan = (
+                    pd.isnull(val)
+                    if type(val) == int or type(val) == float
+                    else pd.isnull(val)
+                )
+                if val_is_nan:
                     # Calculate for missing metric
                     self.calc(metric_name, **parameters)
 

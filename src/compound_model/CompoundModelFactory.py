@@ -1,5 +1,5 @@
+from __future__ import annotations
 from typing import Union, Type, Any
-import pandas as pd
 from src.filter.Filter import Filter
 from src.controller.Controller import Controller
 from src.metric.CompoundMetricManager import CompoundMetricManager
@@ -7,7 +7,6 @@ from src.metric.SampleMetricManager import SampleMetricManager
 from src.metric.SampleMetric import SampleMetric
 from src.metric.CompoundMetric import CompoundMetric
 from src.population.Population import Population
-from src.filter.FilterRegistry import FilterRegistry
 import numpy as np
 
 COMPOUND_MODEL_FACTORY_PREFIX_NAME = "CMF"
@@ -73,10 +72,44 @@ class CompoundModelFactory:
                 self._dataset,
                 self._smm,
                 controller,
-                filter.get_bit(FilterRegistry),
+                filter.get_bit(),
             )
             for filter in self._filters
         }
+
+        # Define context
+        self._context = None
+
+    def apply_filters(self) -> None:
+        """
+        Apply filters to the population.
+
+        The result is stored in disk according to the population class.
+        If any changes occur to the population, this function should be called again
+        before evaluation.
+
+        Note that this should be done before calling any evaluate functions.
+        """
+        for filter in self._filters:
+            self._population.apply_filter(filter, self._smm)
+
+    def give_context(self, context: CompoundModelFactoryContext) -> None:
+        """
+        Gives a context to the factory, used to keep track of all other
+        factories.
+
+        Note that this context will be given to compound metric managers as well,
+        such that it can be reached from compound metrics.
+
+        Args:
+            context (CompoundModelFactoryContext): The context.
+        """
+        # Give context to the factory
+        self._context = context
+
+        # Propagate the context to CMMs
+        for cmm in self._cmms.values():
+            cmm.give_context(context)
 
     def generate_custom_population(
         self,
@@ -84,7 +117,7 @@ class CompoundModelFactory:
         input: dict[str, np.ndarray],
         pop_name: str,
         append=True,
-    ):
+    ) -> None:
         """
         Generates samples based on specified latent codes and input (which specify
         attribute manipulations).
@@ -119,7 +152,10 @@ class CompoundModelFactory:
                 Standardized representation refers to the float range of [-1,1].
             pop_name (str): Name of the population.
             append (bool, optional): True if generated samples should be appended to the population.
-                False if the new samples should replace the population instead. Defaults to True.
+                False if the new samples should replace the population instead.
+                Note that images to which URIs of replaced samples point are not removed from disk -
+                only the references to them will be dropped. New samples are free to override the old images on disk.
+                Defaults to True.
 
         Raises:
             AssertionError: When the number of latent codes are below 1.
@@ -176,10 +212,7 @@ class CompoundModelFactory:
 
         Let P be a population with 5 number of samples with id 1,2,3,4,5.
         'generate_population(num_samples = 3, replace=True)' will result in id 1-3 being replaced by new samples and
-        4-5 staying as they were.
-
-        In the last example, if the wanted result would be a new population with just 3 samples, then one would
-        have to manually delete the old population folder first.
+        4-5 removed from population (note that underlying files are not removed).
 
         Note that this function clears local and internal compound metrics stored by the compound metric manager for this
         population.
@@ -272,14 +305,16 @@ class CompoundModelFactory:
 
     def evaluate_compound_models(
         self,
-        filters: Type[Filter] | list[Type[Filter]] = None,
-        compound_metrics: list[str] | str = None,
+        filters: Union[Type[Filter], list[Type[Filter]]] = None,
+        compound_metrics: Union[list[str], str] = None,
         recalculate_metrics: bool = False,
         **parameters: Any,
     ) -> None:
         """
         Evaluates a selection or all of the compound models on a selection of compound metrics.
         Result are saved to the managers storage.
+
+        Note that filters should be applied with function call to `apply_filters()` before evaluation!
 
         Args:
             filters (Type[Filter] | list[Type[Filter]], optional): Selection of filters to use, must be subset
@@ -299,6 +334,7 @@ class CompoundModelFactory:
         Raises:
             AssertionError: When arguments `filters` or `compound_metrics` are not valid values.
         """
+
         # Format input
         filters = self._format_filters_input(filters)
         compound_metrics = self._format_compound_metrics_input(compound_metrics)
@@ -326,13 +362,12 @@ class CompoundModelFactory:
         print(msg)
         print(len(msg) * "#")
 
-        # Apply filter
-        # TODO: Implement a smart check if filter already applied
-        self._population.apply_filter(filter, self._smm)
-
         # Calc all
         if recalculate_metrics:
-            self._cmms[filter.get_name()].calc(compound_metrics, **parameters)
+            self._cmms[filter.get_name()].calc(
+                compound_metrics,
+                **parameters,
+            )
 
         # Calc missing
         else:
@@ -378,6 +413,15 @@ class CompoundModelFactory:
         """
         return self._name
 
+    def get_population(self) -> Population:
+        """
+        Returns the population of the compound model factory.
+
+        Returns:
+            Population: The population.
+        """
+        return self._population
+
     def get_compound_model_names(self) -> list[str]:
         """
         Returns a list of all compound model names.
@@ -399,7 +443,7 @@ class CompoundModelFactory:
             assert compound_metric in self.get_compound_metric_names()
 
     def _format_filters_input(
-        self, filters: Type[Filter] | list[Type[Filter]] = None
+        self, filters: Union[Type[Filter], list[Type[Filter]]] = None
     ) -> list[Type[Filter]]:
         if type(filters) is list:
             return filters
@@ -409,7 +453,7 @@ class CompoundModelFactory:
             return [filters]
 
     def _format_compound_metrics_input(
-        self, compound_metrics: str | list[str] = None
+        self, compound_metrics: Union[str, list[str]] = None
     ) -> list[Type[Filter]]:
         if type(compound_metrics) is list:
             return compound_metrics
@@ -417,3 +461,64 @@ class CompoundModelFactory:
             return self.get_compound_metric_names()
         else:
             return [compound_metrics]
+
+
+class CompoundModelFactoryContext:
+    """
+    Used to create a larger context, such that
+    a factory can be aware of compound models from other factories.
+    """
+
+    def __init__(self, factories: list[CompoundModelFactory]):
+        """
+        Constructs a new CompoundModelContext instance.
+
+        Args:
+            factories (list[CompoundModelFactory]): All compound factories in the context.
+
+        """
+        # Init properties
+        self._populations = dict()
+        self._filter_bits = dict()
+
+        self._factory_names = [factory.get_name() for factory in factories]
+
+        # Extract properties
+        for name, factory in zip(self._factory_names, factories):
+            filters = factory.get_filters()
+            self._populations[name] = factory.get_population()
+            self._filter_bits[name] = [
+                (filter.get_bit(), filter.get_name()) for filter in filters
+            ]
+
+        # Give all factories the context
+        for factory in factories:
+            factory.give_context(self)
+
+    def __eq__(self, other):
+        return (
+            self._factory_names == other.factory_names
+            and self._populations == other.populations
+            and self._filter_bits == other.filter_bits
+        )
+
+    @property
+    def factory_names(self) -> list[str]:
+        """
+        Get the  factory names of the context.
+        """
+        return self._factory_names
+
+    @property
+    def populations(self) -> dict[str, Population]:
+        """
+        Get the  populations of the context.
+        """
+        return self._populations
+
+    @property
+    def filter_bits(self) -> dict[str, list[int]]:
+        """
+        Get the filter bits of the context.
+        """
+        return self._filter_bits

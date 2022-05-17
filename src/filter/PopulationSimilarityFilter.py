@@ -27,6 +27,10 @@ class PopulationSimilarityFilter(SampleMetricFilter):
     def reg_setup_modes(self) -> dict[str, SetupMode]:
         return self.sample_metric_reg_setup_modes()
 
+    @staticmethod
+    def get_bit() -> int:
+        return 4
+
     def apply(smm: SampleMetricManager, **parameters: Any) -> pd.index:
         """
         Applies filter on population contained in given sample metric manager.
@@ -54,10 +58,11 @@ class PopulationSimilarityFilter(SampleMetricFilter):
             else False
         )
 
-        # Get metric value
-        pop_sim = smm.get(
-            [PopulationSimilaritySampleMetric.get_name()], calc_if_missing=True
+        # Calc metric value
+        smm.calc(
+            [PopulationSimilaritySampleMetric.get_name()],
         )
+        pop_sim = smm.get([PopulationSimilaritySampleMetric.get_name()])
 
         # Parse population similarity
         pairs = []
@@ -68,12 +73,14 @@ class PopulationSimilarityFilter(SampleMetricFilter):
                 continue
 
             # Get indices to find pairs
-            sim = pop_sim.loc[i].item()
+            sim = pop_sim.loc[i].item()[0][1]
             closest_to_i = int(sim[0][0])
 
             # Skip already checked
             if not isinstance(pop_sim.loc[closest_to_i].item(), float):
-                closest_to_closest_to_i = int(pop_sim.loc[closest_to_i].item()[0][0])
+                closest_to_closest_to_i = int(
+                    pop_sim.loc[closest_to_i].item()[0][1][0][0]
+                )
 
                 # Check if pair is closest to each other
                 if closest_to_closest_to_i == i:
@@ -87,8 +94,8 @@ class PopulationSimilarityFilter(SampleMetricFilter):
         # Fix pair similarity
         if pairs:
             for i, j in pairs:
-                sim_i = pop_sim.loc[i].item()
-                sim_j = pop_sim.loc[j].item()
+                sim_i = pop_sim.loc[i].item()[0][1]
+                sim_j = pop_sim.loc[j].item()[0][1]
 
                 # Let the pair sample with second highest similarity keep
                 # it's similarity to the other pair sample.

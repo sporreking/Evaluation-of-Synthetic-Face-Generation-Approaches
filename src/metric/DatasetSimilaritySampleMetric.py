@@ -9,6 +9,7 @@ from src.metric.SampleMetric import SampleMetric
 
 if TYPE_CHECKING:
     from src.metric.SampleMetricManager import SampleMetricManager
+    from src.dataset.Dataset import Dataset
 
 DATASET_SIMILARITY_NAME = "DatasetSimilarity"
 
@@ -95,4 +96,26 @@ class DatasetSimilaritySampleMetric(SampleMetric):
             output[i] = np.sort(similarities)[-1]
 
         # Return similarity scores between samples and dataset
+        return output
+
+    @staticmethod
+    def dataset_vs_dataset_similarity(dataset: Dataset):
+        # Load dataset projections
+        dataset_projections = MS.load_projected_images(
+            dataset.get_name(dataset.get_resolution())
+        )
+
+        # Derive similarity scores and find largest per sample
+        output = np.zeros(dataset_projections.shape[0])
+        for i in tqdm(
+            range(dataset_projections.shape[0]), desc="Calculating similarity scores"
+        ):
+            # TODO: Make this using multiprocessing i.e. Pool and Map
+            similarities = (
+                dataset_projections[i, :].dot(dataset_projections.T).flatten()
+            )
+            similarities[i] = -float("inf")  # Do not check similarity with self
+            output[i] = np.sort(similarities)[-1]
+
+        # Return similarity scores between dataset and dataset
         return output

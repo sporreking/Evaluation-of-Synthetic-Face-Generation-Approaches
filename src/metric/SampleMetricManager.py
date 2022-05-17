@@ -89,6 +89,16 @@ class SampleMetricManager:
         """
         return list(self._sample_metrics.values())
 
+    def get_metric_indices(self) -> pd.Index:
+        """
+        Returns the indices where one or more sample metrics
+        have been calculated.
+
+        Returns:
+            pd.Index: The indices.
+        """
+        return self._metrics.index
+
     def get_population(self) -> Union[Population, None]:
         """
         Returns the dedicated population of this manager. This value
@@ -192,6 +202,7 @@ class SampleMetricManager:
         metric_names: Union[list[str], str] = None,
         ids: Union[list[int], int] = None,
         calc_if_missing: bool = False,
+        skip_if_missing: bool = False,
         **parameters: Any,
     ) -> pd.DataFrame:
         """
@@ -212,7 +223,13 @@ class SampleMetricManager:
                 retrieved for all samples in the population. Defaults to None.
             calc_if_missing (bool, optional): If `True`, the specified metrics will
                 be calculated automatically for the specified IDs if they do not exist.
-                This is done through the `calc()` function. Defaults to False.
+                This is done through the `calc()` function.
+                Note that this should not be True if `skip_if_missing` is True.
+                Defaults to False.
+            skip_if_missing (bool, optional): If `True`, the specified metrics will
+                be skipped for the specified IDs if they do not exist.
+                Note that this should not be True if `calc_if_missing` is True.
+                Defaults to False.
             **parameters (Any): Arbitrary parameters required by the metrics.
                 These are only used if `calc_if_missing=True`, and are all forwarded
                 to each requested metric's SampleMetric upon calculation.
@@ -235,18 +252,22 @@ class SampleMetricManager:
             ValueError: If the result from a metric does not contain precisely one
                 result for each requested sample. This can only happen if `calc_if_missing=True`.
             RuntimeError: If the manager has no population, i.e., `None` was supplied upon construction.
+            ValueError: If `calc_if_missing` and `skip_if_missing` is True.
         """
 
         if self._population is None:
             raise RuntimeError("The manager has no population!")
 
+        if calc_if_missing and skip_if_missing:
+            raise ValueError("Contradicting arguments, cannot skip AND calc missing.")
+
         # Adjust input
         metric_names, ids = self._parse_input(
-            metric_names, ids, check_calc=not calc_if_missing
+            metric_names, ids, check_calc=not (calc_if_missing or skip_if_missing)
         )
 
         # Calculate if missing
-        if calc_if_missing:
+        if calc_if_missing or skip_if_missing:
 
             # Check each metric individually
             for metric_name in metric_names:
@@ -259,7 +280,10 @@ class SampleMetricManager:
 
                 # Calculate for missing metric
                 if calc_ids:
-                    self.calc(metric_name, calc_ids, **parameters)
+                    if not skip_if_missing:
+                        self.calc(metric_name, calc_ids, **parameters)
+                    else:
+                        ids = [id for id in ids if id not in calc_ids]
 
         # Fetch metrics
         return self._metrics.loc[ids, metric_names]
@@ -327,7 +351,8 @@ class SampleMetricManager:
                 )
 
             # Check valid result dimensions
-            if result.shape[0] != len(ids):
+            # Not applicable when using filtering
+            if result.shape[0] != len(ids) and "filter_bit" not in parameters:
                 raise ValueError(
                     f"Calculation failed for metric '{sm.get_name()}'! First axis must "
                     + "contain exactly one result for each specified ID."
