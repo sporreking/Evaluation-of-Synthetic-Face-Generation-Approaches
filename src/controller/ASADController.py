@@ -86,7 +86,7 @@ class ASADController(Controller):
                     lambda attr=attr: load_aux_best(mn_dec(attr, False)) is not None,
                     lambda attr=attr: self._setup_info_func(mn_dec(attr, False)),
                     required_modes=[mn_cls(attr)],
-                    batch_size=3,
+                    batch_size=1,
                     epochs=15,
                     iter_per_epoch=2000,
                     lambda_mse=5000,  # MSE term gets divided by this value

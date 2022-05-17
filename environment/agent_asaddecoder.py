@@ -110,7 +110,7 @@ def _decoder_loss(
     lambda_mse_res = ((256 / G_minus_n.shape[-1]) ** 2) / config["lambda_mse"]
 
     del G_minus_n
-    torch.cuda.empty_cache()
+    CU.empty_cache()
 
     C = c1 + torch.mean(torch.log(1 - cls_model(G(codes + control_vectors)) + eps))
     MSE = mse1 + torch.mean(
@@ -128,7 +128,7 @@ def _fit_decoder(
     gen: Generator,
     G: Callable[[torch.Tensor], torch.Tensor],
 ) -> None:
-    torch.cuda.empty_cache()
+    CU.empty_cache()
 
     # Losses
     tr_losses = []
@@ -171,7 +171,9 @@ def _fit_decoder(
                 val_losses.append((val_loss, batch_nr))
             else:
                 # Train decoder
-                tr_loss = _train_decoder(config, model, cls_model, codes, opt, G)
+                tr_loss = _train_decoder(
+                    config, model, cls_model, device, codes, opt, G
+                )
 
                 # Record losses
                 tr_losses.append((tr_loss, batch_nr))
@@ -202,19 +204,22 @@ def _train_decoder(
     config: dict,
     model: Callable[[torch.Tensor], torch.Tensor],
     cls_model: Callable[[torch.Tensor], torch.Tensor],
+    device: torch.device,
     codes: torch.Tensor,
     opt,
     G: Callable[[torch.Tensor], torch.Tensor],
 ):
     # Clear model gradients
     opt.zero_grad()
-    torch.cuda.empty_cache()
+    CU.empty_cache()
 
-    # Get predictions
-    control_vectors = model(codes)
+    # Enable autocast to leverage memory usage
+    with torch.autocast(str(device)):
+        # Get predictions
+        control_vectors = model(codes)
 
-    # Calc loss
-    loss = _decoder_loss(control_vectors, codes, cls_model, G, config)
+        # Calc loss
+        loss = _decoder_loss(control_vectors, codes, cls_model, G, config)
 
     # Update weights
     loss.backward()
@@ -231,7 +236,7 @@ def _validate_decoder(
 ):
     # Clear model gradients
     model.eval()
-    torch.cuda.empty_cache()
+    CU.empty_cache()
 
     with torch.no_grad():
         # Get predictions
