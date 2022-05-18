@@ -195,7 +195,7 @@ class FIDCompoundMetric(CompoundMetric):
                 )
             except Exception as error:
                 self._move_filtered_files_back(pop_path)
-                print("Something went when calculating FID using clean-fid.")
+                print("Something went wrong when calculating FID using clean-fid.")
                 print(repr(error))
                 raise
         else:
