@@ -54,7 +54,10 @@ class FARCompoundMetric(CompoundMetric):
         The dictionary consist of setup mode names, mapped to SetupMode objects.
 
         Raises:
-            AssertionError: When DatasetSimilaritySampleMetric
+            AssertionError: When DatasetSimilaritySampleMetric does not exist in
+                the sample metric manager provided on construction.
+            AssertionError: When PopulationSimilaritySampleMetric does not exist in
+                the sample metric manager provided on construction.
 
         Returns:
             dict[str, SetupMode]: All setup modes, and their functionality.
@@ -75,6 +78,7 @@ class FARCompoundMetric(CompoundMetric):
         # Define setup mode exclusive for FAR
         ds_vs_ds_setup_mode = {
             DS_VS_DS_SETUP_NAME: SetupMode(
+                True,
                 lambda _: self._setup_dataset_vs_dataset(),
                 self._is_dataset_vs_dataset_ready,
                 required_modes=[setup_name for setup_name in ds_setup_modes.keys()],
