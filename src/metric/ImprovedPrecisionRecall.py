@@ -66,10 +66,21 @@ class ImprovedPrecisionRecall:
         self.file_jar = get_file_jar()
         self.ref_file_name = get_ref_file_name(ds)
         self.ds = ds
+        self._cache_vgg16 = None
 
-        print("loading vgg16 for improved precision and recall...", end="", flush=True)
-        self.vgg16 = models.vgg16(pretrained=True).eval()
-        print("done")
+    @property
+    def vgg16(self):
+        if self._cache_vgg16 is None:
+            print(
+                "loading vgg16 for improved precision and recall...", end="", flush=True
+            )
+            self._cache_vgg16 = models.vgg16(pretrained=True).eval()
+            print("done")
+        return self._cache_vgg16
+
+    @vgg16.setter
+    def vgg16(self, value):
+        self._cache_vgg16 = value
 
     def calc_recall(
         self,
