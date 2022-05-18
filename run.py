@@ -7,6 +7,7 @@ from src.init_phase import init_phase, init_done
 from src.setup_phase import setup_phase
 from src.generation_phase import generation_phase
 from src.evaluation_phase import evaluation_phase
+from src.presentation_phase import presentation_phase
 
 import src.util.PromptUtil as PU
 
@@ -78,6 +79,14 @@ def _evaluation_wrapper(name: str, argv: list = None) -> None:
     evaluation_phase()
 
 
+def _presentation_wrapper(name: str, argv: list = None) -> None:
+    # Require init phase
+    _require_phase(name, "init", init_done)
+
+    # Execute presentation phase
+    presentation_phase()
+
+
 ##########################
 # Core argument handling #
 ##########################
@@ -88,6 +97,7 @@ phases = {
     "setup": _setup_wrapper,
     "generate": _generation_wrapper,
     "evaluate": _evaluation_wrapper,
+    "present": _presentation_wrapper,
 }
 
 # Parser core arguments
