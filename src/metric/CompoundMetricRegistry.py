@@ -5,6 +5,7 @@ from src.metric.LSCompoundMetric import LSCompoundMetric, LS_NAME
 from src.metric.PPLCompoundMetric import PPLCompoundMetric, PPL_NAME
 from src.metric.RecallCompoundMetric import RecallCompoundMetric, RECALL_NAME
 from src.metric.PrecisionCompoundMetric import PrecisionCompoundMetric, PRECISION_NAME
+from src.metric.FARCompoundMetric import FARCompoundMetric, FAR_NAME
 
 
 class CompoundMetricRegistry(Registry[type[CompoundMetric]]):
@@ -23,6 +24,7 @@ class CompoundMetricRegistry(Registry[type[CompoundMetric]]):
         PPL_NAME: PPLCompoundMetric,
         PRECISION_NAME: PrecisionCompoundMetric,
         RECALL_NAME: RecallCompoundMetric,
+        FAR_NAME: FARCompoundMetric,
     }
 
     @staticmethod
