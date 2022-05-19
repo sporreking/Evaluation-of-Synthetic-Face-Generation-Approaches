@@ -87,8 +87,8 @@ class ASADController(Controller):
                     lambda attr=attr: self._setup_info_func(mn_dec(attr, False)),
                     required_modes=[mn_cls(attr)],
                     batch_size=1,
-                    epochs=15,
-                    iter_per_epoch=2000,
+                    epochs=60,
+                    iter_per_epoch=500,
                     lambda_mse=5000,  # MSE term gets divided by this value
                 )  # -> increasing lambda_mse means less emphasis on MSE part (contrary to the classification part of the loss)
                 for attr in self._attrs
