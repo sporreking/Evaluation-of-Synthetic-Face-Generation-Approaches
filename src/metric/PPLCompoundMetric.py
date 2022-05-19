@@ -251,7 +251,7 @@ class PPLCompoundMetric(CompoundMetric):
         if vgg16 is None:
             print("vgg16 not local, downloading...")
             # vgg16_zhang
-            file_name = get_file_jar().get_root_dir() + VGG16_MODEL_NAME
+            file_name = get_file_jar().get_root_dir() / VGG16_MODEL_NAME
             request.urlretrieve(VGG16_URL, file_name)
             vgg16 = torch.jit.load(file_name).eval()
 
