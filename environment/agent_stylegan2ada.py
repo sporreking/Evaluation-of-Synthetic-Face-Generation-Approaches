@@ -36,7 +36,7 @@ LAUNCH_MODE_PROJECT = "p"
 LAUNCH_MODE_LIST = [LAUNCH_MODE_Z, LAUNCH_MODE_W, LAUNCH_MODE_PROJECT]
 
 parser = ArgumentParser()
-parser.add_argument("--mode", type=str, choices=LAUNCH_MODE_LIST, default=LAUNCH_MODE_Z)
+parser.add_argument("--mode", type=str, choices=LAUNCH_MODE_LIST, default=LAUNCH_MODE_W)
 parser.add_argument("--truncation_psi", type=float, default=0.7)
 parser.add_argument("--truncation_cutoff", type=float, default=8)
 parser.add_argument(
