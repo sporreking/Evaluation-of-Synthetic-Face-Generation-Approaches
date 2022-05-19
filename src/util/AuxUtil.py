@@ -253,13 +253,16 @@ def get_available_aux_epoch_batch_pairs(name: str) -> List[Tuple[int, int]]:
     ]
 
 
-def plot_aux_loss(name: str):
+def plot_aux_loss(name: str, title: str = None):
     """
     Plots the training and validation loss for the auxiliary model
     associated with the specified name.
 
     Args:
         name (str): The name of the model to plot for.
+        title (str, optional): A title to use for the plot, or `None`
+            if no title should be used. Note that the suffix `" Training"`
+            will be appended to the specified title. Defaults to None.
 
     Raises:
         ValueError: If there exists no model with the specified name.
@@ -272,25 +275,34 @@ def plot_aux_loss(name: str):
     if not epoch_batch_pairs:
         raise ValueError(f"No auxiliary model with name: '{name}'")
 
-    # Fetch model versions
-    models = [load_aux(name, e, b) for e, b in epoch_batch_pairs]
+    # Load data
+    epochs = []
+    train_loss_scores = []
+    valid_loss_scores = []
+    for e, b in epoch_batch_pairs:
+        info = load_aux(name, e, b)
 
-    # Derive the epoch points
-    epochs = np.array(
-        [(m.epoch - 1) + (m.batch) / m.num_batches_per_epoch for m in models]
-    )
+        # Derive the epoch points
+        epochs.append((info.epoch - 1) + (info.batch) / info.num_batches_per_epoch)
 
-    # Sort epochs
+        # Extract the loss scores and sort according to epoch order
+        train_loss_scores.append(info.train_loss)
+        valid_loss_scores.append(info.valid_loss)
+
+    # Sort / convert data
+    epochs = np.array(epochs)
     order = epochs.argsort()
     epochs = epochs[order]
-
-    # Extract the loss scores and sort according to epoch order
-    train_loss_scores = np.array([m.train_loss for m in models])[order]
-    valid_loss_scores = np.array([m.valid_loss for m in models])[order]
+    train_loss_scores = np.array(train_loss_scores)[order]
+    valid_loss_scores = np.array(valid_loss_scores)[order]
 
     # Plot scores
-    plt.plot(epochs, train_loss_scores, label="Training loss score")
-    plt.plot(epochs, valid_loss_scores, label="Validation loss score")
+    plt.plot(epochs, train_loss_scores, label="Training Loss Score")
+    plt.plot(epochs, valid_loss_scores, label="Validation Loss Score")
+    if title is not None:
+        plt.title(f"{title} Training")
+    plt.ylabel("Loss")
+    plt.xlabel("Epoch")
     plt.legend(loc="upper right")
     plt.show()
 
