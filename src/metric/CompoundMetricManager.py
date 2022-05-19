@@ -70,9 +70,9 @@ class CompoundMetricManager:
         compound_metrics_con = [metric(self, smm) for metric in compound_metrics]
 
         # Save compound metrics
-        self._compound_metrics = dict(
-            (metric.get_name(), metric) for metric in compound_metrics_con
-        )
+        self._compound_metrics = {
+            metric.get_name(): metric for metric in compound_metrics_con
+        }
 
         # Create storage, init with NaN to keep track of calculated metrics
         self._metrics = pd.DataFrame(columns=self.get_metric_names())
