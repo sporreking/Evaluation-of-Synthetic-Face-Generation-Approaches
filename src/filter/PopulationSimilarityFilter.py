@@ -31,6 +31,7 @@ class PopulationSimilarityFilter(SampleMetricFilter):
     def get_bit() -> int:
         return 4
 
+    @staticmethod
     def apply(smm: SampleMetricManager, **parameters: Any) -> pd.index:
         """
         Applies filter on population contained in given sample metric manager.
@@ -126,6 +127,7 @@ class PopulationSimilarityFilter(SampleMetricFilter):
 
         return passed_ind
 
+    @staticmethod
     def get_name():
         return POPULATION_SIMILARITY_FILTER_NAME
 
