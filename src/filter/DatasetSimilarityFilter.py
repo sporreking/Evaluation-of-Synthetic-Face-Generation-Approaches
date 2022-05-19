@@ -31,6 +31,7 @@ class DatasetSimilarityFilter(SampleMetricFilter):
     def get_bit() -> int:
         return 2
 
+    @staticmethod
     def apply(smm: SampleMetricManager, **parameters: Any) -> pd.index:
         """
         Applies filter on population contained in given sample metric manager.
@@ -80,6 +81,7 @@ class DatasetSimilarityFilter(SampleMetricFilter):
 
         return passed_ind
 
+    @staticmethod
     def get_name():
         return DATASET_SIMILARITY_FILTER_NAME
 
