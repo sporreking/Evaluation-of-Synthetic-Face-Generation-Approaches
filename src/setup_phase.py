@@ -1,4 +1,5 @@
 from src.controller.ControllerRegistry import ControllerRegistry
+from src.metric.SampleMetricRegistry import SampleMetricRegistry
 from src.metric.SampleMetricManager import SampleMetricManager
 from src.metric.CompoundMetricManager import CompoundMetricManager
 
@@ -58,10 +59,13 @@ def setup_phase() -> None:
         in ControllerRegistry.get_compatible_generator_names(controller_names[i])
     ]
     sample_metric_manager = SampleMetricManager(sample_metrics_types, None, dataset)
-    filters = [f(_setup_only=True, smm=sample_metric_manager) for f in filter_types]
+    sample_metric_manager_all = SampleMetricManager(
+        SampleMetricRegistry.get_resources(), None, dataset
+    )
+    filters = [f(_setup_only=True, smm=sample_metric_manager_all) for f in filter_types]
     compound_metric_managers = [
         CompoundMetricManager(
-            compound_metrics_types, None, dataset, sample_metric_manager, c, -1
+            compound_metrics_types, None, dataset, sample_metric_manager_all, c, -1
         )
         for c in controllers
     ]
