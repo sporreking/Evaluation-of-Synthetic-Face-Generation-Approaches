@@ -268,17 +268,24 @@ class FARCompoundMetric(CompoundMetric):
             for t_name, far in d.items():
                 print(f"{name}_vs_{t_name}: ", far)
 
+    def has_plot(self) -> bool:
+        return True
+
     def plot_result(self) -> None:
+        # TODO: DO NOT USE MANAGER AFTER STORAGE REWORK
+        val = self._cmm.get(self._name)
+
         def _parse_pop_name(name: tuple[str, int]):
             cm_name = name[0][4:].split("_")
-            filter_name = (
-                self._filter_name_dict[name[1]]
-                if name[1] in self._filter_name_dict
-                else name[1]
-            )
-            return f"{cm_name[0]}, {cm_name[1]}, {filter_name}Filter"
+            context = self._cmm.get_context()
+            for filter_bit, filter_name in [
+                val for inner in context.filter_bits.values() for val in inner
+            ]:
+                if name[1] == filter_bit:
+                    correct_filter_name = filter_name
+            return f"({cm_name[0]}, {cm_name[1]}, {correct_filter_name})"
 
-        for name, d in self._far[0].items():
+        for name, d in val[0].items():
             for t_name, far in d.items():
                 # ds vs ds
                 if type(name) == str:
@@ -301,9 +308,9 @@ class FARCompoundMetric(CompoundMetric):
                     style = "-"
 
                 plt.plot(self._thresholds, far, style, label=f"{name1} vs {name2}")
-        plt.title("FAR as a function of similarity score threshold")
-        plt.xlabel("Similarity score threshold")
-        plt.ylabel("FAR (False acceptance rate)")
+        plt.title("FAR as a Function of Similarity Score Threshold")
+        plt.xlabel("Similarity Score Threshold")
+        plt.ylabel("FAR (False Acceptance Rate)")
         plt.yscale("log")
         plt.legend()
         plt.show(block=True)
