@@ -260,10 +260,7 @@ class CompoundMetricManager:
 
         # Calculate metrics
         for cm in cms:
-            msg = f"# Computing {cm.get_name()} #"
-            print(len(msg) * "#")
-            print(msg)
-            print(len(msg) * "#")
+            print(f"# ~ Computing {cm.get_name()}")
             # Derive metric for samples
             result = cm.calc(filter_bit=self._filter_bit, **parameters)
 
