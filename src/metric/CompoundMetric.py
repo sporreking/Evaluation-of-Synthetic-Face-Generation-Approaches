@@ -109,6 +109,15 @@ class CompoundMetric(Setupable, metaclass=abc.ABCMeta):
         """
         pass
 
+    def has_plot(self) -> bool:
+        """
+        Should return `True` if `plot_result()` actually plots.
+
+        Returns:
+            bool: True if `plot_result()` actually plots.
+        """
+        return False
+
     @abc.abstractmethod
     def plot_result(self) -> None:
         """
