@@ -11,7 +11,7 @@ from src.dataset.Dataset import Dataset
 from src.dataset.TorchImageDataset import TorchImageDataset
 import torchvision.transforms as T
 import numpy as np
-from sklearn.svm import SVC
+from sklearn.svm import LinearSVC
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import src.util.CudaUtil as CU
@@ -93,7 +93,7 @@ def get_missing_model_names(all_svc_names: list[str]) -> list[str]:
 
 def get_svc(
     attr: str, gen_name: str, controller_name: str = IDENTITY_NAME
-) -> Union[SVC, None]:
+) -> Union[LinearSVC, None]:
     """
     Returns the SVC associated with the given parameters.
 
@@ -105,7 +105,7 @@ def get_svc(
             Defaults to IDENTITY_NAME.
 
     Returns:
-        Union[SVC, None]: The model if it was found, otherwise None.
+        Union[LinearSVC, None]: The model if it was found, otherwise None.
     """
     file_jar = FileJar(SVC_DIR)
 
@@ -320,7 +320,7 @@ def get_labels(attr: str, pop_name: str) -> Union[None, np.ndarray]:
     return file_jar.get_file(LABELS_DIR + attr + LABELS_EXT, np.load)
 
 
-def train_svc(controller: Controller, attr: str) -> SVC:
+def train_svc(controller: Controller, attr: str) -> LinearSVC:
     """
     Train a support vector classifier to predict `attr` on the population defined by the
     controller.
@@ -354,7 +354,7 @@ def train_svc(controller: Controller, attr: str) -> SVC:
     )
 
 
-def _fit_svc(latent_codes: np.ndarray, labels: np.ndarray, name: str) -> SVC:
+def _fit_svc(latent_codes: np.ndarray, labels: np.ndarray, name: str) -> LinearSVC:
     # Sanity check
     if latent_codes.shape[0] != labels.shape[0]:
         raise ValueError(
@@ -366,7 +366,7 @@ def _fit_svc(latent_codes: np.ndarray, labels: np.ndarray, name: str) -> SVC:
     # Codes/labels filtering according to InterFaceGAN/Linear separability
     latent_codes, labels = _remove_uncertain_labels(latent_codes, labels)
 
-    svc = SVC(kernel="linear", verbose=True)
+    svc = LinearSVC(verbose=True, max_iter=1000000000)
     print("Training SVC...")
     start = time.time()
     svc.fit(latent_codes, labels)
