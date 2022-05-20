@@ -25,6 +25,8 @@ from src.controller.ASADControllerModels import (
 from src.util.AuxUtil import AuxModelInfo, save_aux, load_aux_best
 from src.generator.Generator import Generator
 
+USE_AUTOCAST = False
+
 
 def _get_config() -> dict:
     # Setup parser
@@ -50,17 +52,22 @@ def main():
     ! Needs to be extended when new generators are added.
     * Now supports the following generators: unetgan, stylegan2ada
     """
+    global USE_AUTOCAST
+
     config = _get_config()
 
     # Dynamic import of generator
     # * Add new generators here
     if config["generator_name"] == "unetgan":
+        USE_AUTOCAST = False
         from environment.agent_unetgan import get_generator
         from src.generator.UNetGANGenerator import UNetGANGenerator as Gen
     elif config["generator_name"] == "stylegan2ada":
+        USE_AUTOCAST = False
         from environment.agent_stylegan2ada import get_generator
         from src.generator.StyleGAN2ADAGenerator import StyleGAN2ADAGenerator as Gen
     elif config["generator_name"] == "styleswin":
+        USE_AUTOCAST = True
         from environment.agent_styleswin import get_generator
         from src.generator.StyleSwinGenerator import StyleSwinGenerator as Gen
 
@@ -214,7 +221,14 @@ def _train_decoder(
     CU.empty_cache()
 
     # Enable autocast to leverage memory usage
-    with torch.autocast(str(device)):
+    if USE_AUTOCAST:
+        with torch.autocast(str(device)):
+            # Get predictions
+            control_vectors = model(codes)
+
+            # Calc loss
+            loss = _decoder_loss(control_vectors, codes, cls_model, G, config)
+    else:
         # Get predictions
         control_vectors = model(codes)
 
