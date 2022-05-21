@@ -82,6 +82,7 @@ def _get_partial_fc_transform() -> T.Compose:
         [
             T.ToTensor(),
             T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            T.CenterCrop(192),
             T.Resize(112),
         ]
     )
