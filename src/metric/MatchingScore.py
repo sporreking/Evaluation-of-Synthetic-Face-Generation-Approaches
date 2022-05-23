@@ -177,4 +177,4 @@ def project_images(
             lambda p: np.save(p, projections),
         )
 
-    return projections
+    return projections / np.linalg.norm(projections, axis=1).reshape((-1, 1))
