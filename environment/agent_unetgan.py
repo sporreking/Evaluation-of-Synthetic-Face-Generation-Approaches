@@ -24,7 +24,7 @@ import time as time
 from latent_code_receiver import receive_latent_codes
 
 # Constants
-BATCH_SIZE = 2  # * Lower this if memory problems
+BATCH_SIZE = 1  #! Lower this if memory problems
 
 # Setup path
 old_path = Path().absolute()
