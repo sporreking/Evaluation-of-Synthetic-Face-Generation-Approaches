@@ -27,6 +27,8 @@ from src.generator.Generator import Generator
 
 USE_AUTOCAST = False
 
+scaler = torch.cuda.amp.GradScaler()
+
 
 def _get_config() -> dict:
     # Setup parser
@@ -228,6 +230,11 @@ def _train_decoder(
 
             # Calc loss
             loss = _decoder_loss(control_vectors, codes, cls_model, G, config)
+
+            # Update weights
+            scaler.scale(loss).backward()
+            scaler.step(opt)
+            scaler.update()
     else:
         # Get predictions
         control_vectors = model(codes)
@@ -235,9 +242,10 @@ def _train_decoder(
         # Calc loss
         loss = _decoder_loss(control_vectors, codes, cls_model, G, config)
 
-    # Update weights
-    loss.backward()
-    opt.step()
+        # Update weights
+        loss.backward()
+        opt.step()
+
     return loss.item()
 
 
