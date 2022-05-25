@@ -108,7 +108,7 @@ class DatasetSimilaritySampleMetric(SampleMetric):
         # Derive similarity scores and find largest per sample
         output = np.zeros(dataset_projections.shape[0])
         for i in tqdm(
-            range(dataset_projections.shape[0]), desc="Calculating similarity scores"
+            range(dataset_projections.shape[0]), desc="Dataset vs dataset similarity"
         ):
             # TODO: Make this using multiprocessing i.e. Pool and Map
             similarities = (

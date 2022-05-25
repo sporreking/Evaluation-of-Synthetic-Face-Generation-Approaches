@@ -321,7 +321,7 @@ class FARCompoundMetric(CompoundMetric):
         # Derive similarity scores and find largest per sample
         output = np.zeros(sample_projections.shape[0])
         for i in tqdm(
-            range(sample_projections.shape[0]), desc="Calculating similarity scores"
+            range(sample_projections.shape[0]), desc="Population vs dataset similarity"
         ):
             similarities = sample_projections[i, :].dot(dataset_projections.T).flatten()
             output[i] = np.sort(similarities)[-1]
@@ -352,7 +352,12 @@ class FARCompoundMetric(CompoundMetric):
 
         results = dict()
         # Loop through all populations
-        for i, population in enumerate(populations_vs):
+        for i, population in tqdm(
+            enumerate(populations_vs),
+            position=0,
+            desc="Populations vs population similarity",
+            total=len(populations_vs),
+        ):
             pop_name = population.get_name()
             pop_data = population.get_data()
             uris_unfiltered_vs = list(pop_data[population.COLUMN_URI])
@@ -363,7 +368,13 @@ class FARCompoundMetric(CompoundMetric):
             )
 
             # Loop through all filter
-            for filter_bit_vs in filter_bits_vs[i]:
+            for filter_bit_vs in tqdm(
+                filter_bits_vs[i],
+                position=1,
+                desc="Similarity score per filter",
+                leave=False,
+                total=len(filter_bits_vs[i]),
+            ):
                 # Save filter bit and name connection
                 self._filter_name_dict[filter_bit_vs[0]] = filter_bit_vs[1]
                 filter_bit_vs = filter_bit_vs[0]
@@ -376,7 +387,9 @@ class FARCompoundMetric(CompoundMetric):
                 output = np.zeros(target_projections.shape[0], dtype=np.ndarray)
                 for i in tqdm(
                     range(target_projections.shape[0]),
+                    position=1,
                     desc="Calculating similarity scores",
+                    leave=False,
                 ):
                     similarities = (
                         target_projections[i, :].dot(sample_projections_vs.T).flatten()
