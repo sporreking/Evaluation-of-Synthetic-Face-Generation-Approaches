@@ -3,7 +3,7 @@ from src.metric.CompoundMetric import CompoundMetric
 from src.metric.SampleMetricManager import SampleMetricManager
 from src.core.Setupable import SetupMode
 from src.metric.CompoundMetricManager import CompoundMetricManager
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Union
 from src.population.Population import Population
 from src.metric.DatasetSimilaritySampleMetric import DatasetSimilaritySampleMetric
 from src.metric.PopulationSimilaritySampleMetric import PopulationSimilaritySampleMetric
@@ -12,6 +12,7 @@ from src.util.AuxUtil import get_file_jar
 import src.metric.MatchingScore as MS
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 if TYPE_CHECKING:
     from src.compound_model.CompoundModelFactory import CompoundModelFactoryContext
@@ -115,8 +116,7 @@ class FARCompoundMetric(CompoundMetric):
         """
 
         return np.mean(
-            similarities.reshape(similarities.size, 1)
-            > self._thresholds.reshape(1, self._thresholds.shape[0]),
+            similarities.reshape(-1, 1) > self._thresholds.reshape(1, -1),
             0,
         )
 
@@ -174,47 +174,13 @@ class FARCompoundMetric(CompoundMetric):
         similarities = self._smm.get(
             [DatasetSimilaritySampleMetric.get_name()],
             filtered_ids,
-            calc_if_missing=True,
+            skip_if_missing=True,
             **parameters,
         ).to_numpy()
-        far_pop_vs_ds = self._calc_far(similarities)
-
-        # This population/filter_bit vs this populations/filter_bit (Symmetrical)
-        similarities = self._smm.get(
-            [PopulationSimilaritySampleMetric.get_name()],
-            filtered_ids,
-            filter_bit=filter_bit,
-            **parameters,
-        )
-        try:
-            # Try to get values
-            similarities = similarities.apply(
-                lambda row: row[0][0][filter_bit][0][1], axis=1
-            ).to_numpy()
-        except:
-            # Not calculated for all samples / filter_bits
-
-            # Calc it
-            self._smm.calc(
-                [PopulationSimilaritySampleMetric.get_name()],
-                filtered_ids,
-                filter_bit=filter_bit,
-                **parameters,
-            )
-            similarities = (
-                self._smm.get(
-                    [PopulationSimilaritySampleMetric.get_name()],
-                    filtered_ids,
-                    calc_if_missing=True,
-                    filter_bit=filter_bit,
-                    **parameters,
-                )
-                .apply(lambda row: row[0][0][filter_bit][0][1], axis=1)
-                .to_numpy()
-            )
-        far_pop_vs_pop = {
-            (self._population.get_name(), filter_bit): self._calc_far(similarities)
-        }
+        if similarities.shape[0] == len(filtered_ids):
+            far_pop_vs_ds = self._calc_far(similarities)
+        else:
+            far_pop_vs_ds = self._population_vs_dataset_far(filter_bit)
 
         # This population vs populations/filter_bits
 
@@ -227,18 +193,14 @@ class FARCompoundMetric(CompoundMetric):
 
         # Format result
         far = dict()
-        cmf_name = list(far_pop_vs_pop.keys())[0]
+        cmf_name = self._population.get_name()
         ds_name = self._dataset.get_name(self._dataset.get_resolution())
-        far[cmf_name] = (
-            {
-                (
-                    ds_name,
-                    None,
-                ): far_pop_vs_ds
-            }
-            | far_pop_vs_pop
-            | far_pop_vs_pops
-        )
+        far[cmf_name] = {
+            (
+                ds_name,
+                None,
+            ): far_pop_vs_ds
+        } | far_pop_vs_pops
         far[ds_name] = {ds_name: self._far_ds_vs_ds}
 
         # Save results
@@ -324,20 +286,69 @@ class FARCompoundMetric(CompoundMetric):
         ]
         return populations, filter_bits
 
+    def _get_projected_images(
+        self, uris: list[Union[str, Path]], name: str
+    ) -> np.ndarray:
+        try:
+            projections = MS.load_projected_images(name)
+            if projections.shape[0] != len(uris):
+                raise FileNotFoundError("Not all images was projected.")
+        except:
+            projections = MS.project_images(uris, file_name_suffix=name)
+
+        return projections
+
+    def _population_vs_dataset_far(
+        self, filter_bit: int
+    ) -> dict[tuple[str, int], np.ndarray]:
+        pop_data = self._population.get_data()
+
+        # Fetch samples to calculate for
+        uris = list(pop_data[self._population.COLUMN_URI])
+
+        # Project self population
+        unfiltered_sample_projections = self._get_projected_images(
+            uris, self._population.get_name()
+        )
+        filtering_inds = self._population.get_filtering_indices(filter_bit)
+        sample_projections = unfiltered_sample_projections[filtering_inds]
+
+        # Load dataset projections
+        dataset_projections = MS.load_projected_images(
+            self._dataset.get_name(self._dataset.get_resolution())
+        )
+
+        # Derive similarity scores and find largest per sample
+        output = np.zeros(sample_projections.shape[0])
+        for i in tqdm(
+            range(sample_projections.shape[0]), desc="Calculating similarity scores"
+        ):
+            similarities = sample_projections[i, :].dot(dataset_projections.T).flatten()
+            output[i] = np.sort(similarities)[-1]
+
+        # Return similarity scores between samples and dataset
+        return output
+
     def _population_vs_populations_far(
         self,
         filter_bit: int,
         filter_bits_vs: list[list[tuple[int, str]]],
         populations_vs: list[Population],
     ) -> dict[tuple[str, int], np.ndarray]:
-        target_pop_name = self._population.get_name()
-        target_pop_data = self._population.get_filtered_data(filter_bit)
 
         # Fetch samples to calculate for
-        uris = list(target_pop_data[self._population.COLUMN_URI])
+        uris = list(self._population.get_data()[self._population.COLUMN_URI])
 
-        # Project self population
-        target_projections = MS.project_images(uris)
+        # Get/project self population
+        unfiltered_target_projections = self._get_projected_images(
+            uris, self._population.get_name()
+        )
+
+        # Filter projections
+        filtering_inds = self._population.get_filtering_indices(filter_bit)
+        target_projections = unfiltered_target_projections[filtering_inds]
+        target_pop_data = self._population.get_filtered_data(filter_bit)
+        target_pop_name = self._population.get_name()
 
         results = dict()
         # Loop through all populations
@@ -346,20 +357,16 @@ class FARCompoundMetric(CompoundMetric):
             pop_data = population.get_data()
             uris_unfiltered_vs = list(pop_data[population.COLUMN_URI])
 
-            # Project population images
-            sample_unfiltered_projections_vs = MS.project_images(uris_unfiltered_vs)
+            # Get/project population images
+            sample_unfiltered_projections_vs = self._get_projected_images(
+                uris_unfiltered_vs, pop_name
+            )
 
             # Loop through all filter
             for filter_bit_vs in filter_bits_vs[i]:
-
                 # Save filter bit and name connection
                 self._filter_name_dict[filter_bit_vs[0]] = filter_bit_vs[1]
-
                 filter_bit_vs = filter_bit_vs[0]
-
-                # Skip self population
-                if pop_name == target_pop_name and filter_bit_vs == filter_bit:
-                    continue
 
                 # Filter population projections
                 filtering = population.get_filtering_indices(filter_bit_vs)
