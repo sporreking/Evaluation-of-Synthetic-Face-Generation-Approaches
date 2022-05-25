@@ -22,18 +22,31 @@ import src.util.CudaUtil as CU
 # * Imports from generator project root
 from models.generator import Generator
 
+# * Launch modes
+LAUNCH_MODE_PROJECT = "project"
+LAUNCH_MODE_GENERATE = "generate"
+
 # * Read system input
 parser = ArgumentParser()
 parser.add_argument("--batch_size", type=int, default=4)
+parser.add_argument(
+    "--launch_mode",
+    choices=[LAUNCH_MODE_PROJECT, LAUNCH_MODE_GENERATE],
+    default=LAUNCH_MODE_GENERATE,
+)
 
 ARGS = parser.parse_args(sys.argv[1:] if __name__ == "__main__" else [])
 
 
 # * Constants
 
+# Launch mode
+LAUNCH_MODE = ARGS.launch_mode
+
 # Directories
 OUT_DIR = GEN_ROOT_DIR / "out"
 PRETRAIN_DIR = GEN_ROOT_DIR / "pretrain" / "FFHQ_256.pt"
+OUT_W_FILE = OUT_DIR / "w.npy"
 
 # Generator
 BATCH_SIZE = ARGS.batch_size
@@ -42,6 +55,7 @@ G_CHANNEL_MULTIPLIER = 2
 LR_MLP = 0.01
 ENABLE_FULL_RESOLUTION = 8
 USE_G_EMA = True  # False -> use "g"
+LATENT_CODES_PER_PROJECTION = 100
 
 # Load GPU if possible
 device = CU.get_default_device()
@@ -58,13 +72,51 @@ def main():
     # Create directories
     OUT_DIR.mkdir(exist_ok=True)
 
-    # Create generator
-    generator = _load_generator()
+    if LAUNCH_MODE == LAUNCH_MODE_PROJECT:
+        _project_codes(latent_codes)
+    elif LAUNCH_MODE == LAUNCH_MODE_GENERATE:
+        print("Assuming latent codes to be from the W-domain.")
+        _generate_images(latent_codes)
 
-    # Load pretrained state
-    ckpt = torch.load(str(PRETRAIN_DIR), map_location="cpu")
-    generator.load_state_dict(ckpt["g_ema" if USE_G_EMA else "g"])
-    del ckpt
+
+def _project_codes(latent_codes: torch.Tensor):
+    # Load mapping network
+    M, _ = _load_generator()
+
+    # Project latent codes
+    projections = np.zeros(latent_codes.shape)
+    with torch.no_grad():
+        n_batches = int(np.ceil(latent_codes.shape[0] / LATENT_CODES_PER_PROJECTION))
+        for i in tqdm(range(n_batches), desc="Projecting latent codes from Z to W"):
+            projections[
+                i * LATENT_CODES_PER_PROJECTION : (i + 1) * LATENT_CODES_PER_PROJECTION,
+                :,
+            ] = (
+                M(
+                    CU.to_device(
+                        latent_codes[
+                            i
+                            * LATENT_CODES_PER_PROJECTION : (i + 1)
+                            * LATENT_CODES_PER_PROJECTION,
+                            :,
+                        ],
+                        device,
+                    )
+                )
+                .cpu()
+                .numpy()
+            )
+    print(f"Successfully projected {projections.shape[0]} latent codes!")
+
+    # Save to disk
+    print(f"Saving to file '{OUT_W_FILE}'...")
+    np.save(OUT_W_FILE, projections)
+    print("Done!")
+
+
+def _generate_images(latent_codes: torch.Tensor):
+    # Load generator
+    _, generator = _load_generator()
 
     # Generate images
     with torch.no_grad():
@@ -102,23 +154,36 @@ def tensor_transform_reverse(image):
 
 
 def _load_generator():
-    return CU.to_device(
-        Generator(
-            256,
-            LATENT_CODE_LENGTH,
-            8,
-            channel_multiplier=G_CHANNEL_MULTIPLIER,
-            lr_mlp=LR_MLP,
-            enable_full_resolution=ENABLE_FULL_RESOLUTION,
-            use_checkpoint=False,
-        ),
-        device,
-    ).eval()
+    G = Generator(
+        256,
+        LATENT_CODE_LENGTH,
+        8,
+        channel_multiplier=G_CHANNEL_MULTIPLIER,
+        lr_mlp=LR_MLP,
+        enable_full_resolution=ENABLE_FULL_RESOLUTION,
+        use_checkpoint=False,
+    )
+
+    # Load pretrained state
+    ckpt = torch.load(str(PRETRAIN_DIR), map_location="cpu")
+    G.load_state_dict(ckpt["g_ema" if USE_G_EMA else "g"])
+    del ckpt
+
+    # Extract mapping network (Z -> W)
+    M = G.style
+
+    # Replace mapping network
+    G.style = torch.nn.Identity()
+
+    return (
+        CU.to_device(M, device).eval(),
+        CU.to_device(G, device).eval(),
+    )
 
 
 # * For use by ASAD
 def get_generator():
-    G = _load_generator()
+    _, G = _load_generator()
     return lambda z: G(z)[0].contiguous()
 
 
