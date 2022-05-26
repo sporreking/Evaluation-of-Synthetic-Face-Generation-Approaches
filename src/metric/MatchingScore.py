@@ -2,6 +2,7 @@ import src.util.AuxUtil as AU
 
 from src.metric.iresnet import iresnet100, IResNet
 import src.util.CudaUtil as CU
+from src.util.AuxUtil import get_file_jar
 
 from typing import Union
 from pathlib import Path
@@ -10,6 +11,9 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 import torchvision.transforms as T
+from matplotlib import pyplot as plt
+from sklearn.mixture import GaussianMixture
+from scipy.stats import norm
 
 import torch
 import gdown
@@ -178,3 +182,90 @@ def project_images(
         )
 
     return projections / np.linalg.norm(projections, axis=1).reshape((-1, 1))
+
+
+def visualize_ffhq256_vs_ffhq256():
+    """
+    Visualizes ffhq256 similarity score with respect to itself.
+
+    Also plots normal distributions fitted by a GMM. These normal distributions
+    are used to infer a threshold value used for filtering.
+
+    Raises:
+        FileNotFoundError: When file is not found.
+    """
+    file_jar = get_file_jar()
+    f_name = "FFHQ_256_vs_FFHQ_256_similarity.npy"
+    similarity = file_jar.get_file(f_name, np.load)
+
+    N = 1000
+    if similarity is None:
+        raise FileNotFoundError(f"{f_name} does not exist.")
+
+    # Plot histogram
+    plt.hist(similarity, bins=N, density=True)
+
+    # Fit GMM
+    n_comp = 4
+    gm = GaussianMixture(
+        n_components=n_comp,
+        covariance_type="diag",
+        tol=1e-8,
+        verbose=1,
+        random_state=0,
+        max_iter=99999999,
+    ).fit(similarity.reshape(-1, 1))
+
+    # Construct linspace
+    xmin, xmax = plt.xlim()
+    space = np.linspace(xmin, xmax, N)
+
+    # Plot all normal distributions
+    p_tot = 0
+    ps = []
+    colors = ["aquamarine", "coral", "aquamarine", "coral"]
+    for i in range(n_comp):
+        std = np.sqrt(gm.covariances_[i][0])
+        m = gm.means_[i][0]
+        w = gm.weights_[i]
+        p = norm.pdf(space, m, std) * w
+        plt.plot(space, p, "--", color=colors[i])
+        ps.append(p)
+        p_tot += p
+
+    # Plot the sum of the normal distributions
+    plt.plot(space, p_tot, ":", color="black", linewidth=6)  # , "--", color="black")
+
+    # Plot the normal distributions associated with unique identities
+    plt.plot(
+        space,
+        (ps[0] + ps[2]),
+        color="limegreen",
+        linewidth=3,
+        label="Unique identities",
+    )
+
+    # Plot the normal distributions associated with non-unique identities
+    plt.plot(
+        space,
+        (ps[1] + ps[3]),
+        color="red",
+        linewidth=3,
+        label="Same identities",
+    )
+
+    # Find and plot the intersection between the normals
+    idx = int(np.argwhere(np.diff(np.sign((ps[0] + ps[2]) - (ps[1] + ps[3]))) != 0)[-1])
+    x_threshold = space[idx]
+    y_threshold = ((ps[0] + ps[2])[idx],)
+    plt.axvline(x=x_threshold, ymin=0, ymax=0.6, ls=":", color="black", linewidth=2)
+    plt.plot(x_threshold, y_threshold, marker="o", color="yellow", linewidth=6)
+
+    # Make the plot look nice
+    plt.legend()
+    plt.xlim(0, 10)
+    plt.annotate(f"{round(x_threshold,3)}", (x_threshold, 0.35), ha="center")
+    plt.xlabel("Similarity score")
+    plt.ylabel("Density")
+    plt.title("FFHQ 256x256 similarity score histogram")
+    plt.show()
