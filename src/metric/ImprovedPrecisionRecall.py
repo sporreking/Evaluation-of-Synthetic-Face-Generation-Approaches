@@ -345,16 +345,16 @@ class ImprovedPrecisionRecall:
             def resize(x):
                 return x
 
-        self.vgg16 = to_device(self.vgg16, get_default_device())
+        vgg16 = to_device(self.vgg16, get_default_device())
         features = []
         for bi in trange(num_batches, desc=desc):
             start = bi * batch_size
             end = start + batch_size
             batch = images[start:end]
             batch = resize(batch)
-            before_fc = self.vgg16.features(batch.cuda())
+            before_fc = vgg16.features(batch.cuda())
             before_fc = before_fc.view(-1, 7 * 7 * 512)
-            feature = self.vgg16.classifier[:4](before_fc)
+            feature = vgg16.classifier[:4](before_fc)
             features.append(feature.cpu().data.numpy())
 
         return np.concatenate(features, axis=0)
@@ -376,13 +376,13 @@ class ImprovedPrecisionRecall:
         dataloader = _get_custom_loader(path_or_fnames, batch_size=batch_size)
         num_found_images = len(dataloader.dataset)
         desc = "extracting features of %d images" % num_found_images
-        self.vgg16 = to_device(self.vgg16, get_default_device())
+        vgg16 = to_device(self.vgg16, get_default_device())
         with torch.no_grad():
             features = []
             for batch in tqdm(dataloader, desc=desc):
-                before_fc = self.vgg16.features(batch.cuda())
+                before_fc = vgg16.features(batch.cuda())
                 before_fc = before_fc.view(-1, 7 * 7 * 512)
-                feature = self.vgg16.classifier[:4](before_fc)
+                feature = vgg16.classifier[:4](before_fc)
                 features.append(feature.cpu().data.numpy())
 
         return np.concatenate(features, axis=0)
