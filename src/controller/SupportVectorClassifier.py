@@ -205,7 +205,7 @@ def setup_auxiliary(
 def setup_labels(
     controller: Controller,
     attr: str,
-    batch_size: int = 64,
+    batch_size: int = 48,
     epochs: int = 40,
     pop_name: str = None,
 ) -> None:
