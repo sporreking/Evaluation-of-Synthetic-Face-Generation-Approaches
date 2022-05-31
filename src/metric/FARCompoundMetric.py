@@ -7,12 +7,15 @@ from typing import Any, TYPE_CHECKING, Union
 from src.population.Population import Population
 from src.metric.DatasetSimilaritySampleMetric import DatasetSimilaritySampleMetric
 from src.metric.PopulationSimilaritySampleMetric import PopulationSimilaritySampleMetric
+import src.util.PromptUtil as PU
 import numpy as np
 from src.util.AuxUtil import get_file_jar
 import src.metric.MatchingScore as MS
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from pathlib import Path
+from collections import namedtuple
+from typing import NamedTuple
 
 if TYPE_CHECKING:
     from src.compound_model.CompoundModelFactory import CompoundModelFactoryContext
@@ -195,7 +198,7 @@ class FARCompoundMetric(CompoundMetric):
         far = dict()
         cmf_name = self._population.get_name()
         ds_name = self._dataset.get_name(self._dataset.get_resolution())
-        far[cmf_name] = {
+        far[(cmf_name, filter_bit)] = {
             (
                 ds_name,
                 None,
@@ -234,12 +237,14 @@ class FARCompoundMetric(CompoundMetric):
         return True
 
     def plot_result(self) -> None:
-        # TODO: DO NOT USE MANAGER AFTER STORAGE REWORK
-        val = self._cmm.get(self._name)
+        FARCompoundMetric._plot_result(self._thresholds, self._cmm.get_context())
 
+    @staticmethod
+    def _plot_result(
+        thresholds: np.ndarray, context: CompoundModelFactoryContext
+    ) -> None:
         def _parse_pop_name(name: tuple[str, int]):
             cm_name = name[0][4:].split("_")
-            context = self._cmm.get_context()
             for filter_bit, filter_name in [
                 val for inner in context.filter_bits.values() for val in inner
             ]:
@@ -247,35 +252,203 @@ class FARCompoundMetric(CompoundMetric):
                     correct_filter_name = filter_name
             return f"({cm_name[0]}, {cm_name[1]}, {correct_filter_name})"
 
-        for name, d in val[0].items():
-            for t_name, far in d.items():
-                # ds vs ds
-                if type(name) == str:
-                    name1 = name
-                    name2 = name1
-                    style = "--"
-                # pop vs ds
-                elif t_name[1] is None:
-                    name1 = _parse_pop_name(name)
-                    name2 = t_name[0]
-                    style = "-."
-                # pop vs pop
+        # TODO: DO NOT USE MANAGER AFTER STORAGE REWORK
+        # Get all cmms from context
+        nestled_cmms = list(context.compound_metric_managers.values())
+        cmms = [cmm for sublist in nestled_cmms for cmm in sublist]
+
+        # Parse and setup plotting names and styles
+        far_graphs = []
+        FARGraph = namedtuple("FARGraph", "name1 name2 far far_type style")
+        for cmm in cmms:
+            for name, d in cmm.get(FAR_NAME)[0].items():
+                for t_name, far in d.items():
+                    # ds vs ds
+                    if type(t_name) == str:
+                        name1 = name
+                        name2 = name1
+                        style = "--"
+                        far_type = "dataset vs itself"
+                    # pop vs ds
+                    elif t_name[1] is None:
+                        name1 = _parse_pop_name(name)
+                        name2 = t_name[0]
+                        style = "-."
+                        far_type = "population vs dataset(s)"
+                    # self vs self
+                    elif name == t_name and type(t_name) != str:
+                        name1 = _parse_pop_name(name)
+                        name2 = _parse_pop_name(t_name)
+                        style = "-"
+                        far_type = "population vs itself"
+                    # pop vs pop
+                    else:
+                        name1 = _parse_pop_name(name)
+                        name2 = _parse_pop_name(t_name)
+                        style = ":"
+                        far_type = "population vs other population(s)"
+
+                    # Save plotting res
+                    far_graphs.append(FARGraph(name1, name2, far, far_type, style))
+
+        # Remove duplicate dataset vs dataset
+        found_datasets = []
+        ids_to_delete = []
+        for i, far_graph in enumerate(far_graphs):
+            if far_graph.far_type == "dataset vs itself":
+                if far_graph.name1 in found_datasets:
+                    ids_to_delete.append(i)
                 else:
-                    name1 = _parse_pop_name(name)
-                    name2 = _parse_pop_name(t_name)
-                    style = ":"
+                    found_datasets.append(far_graph.name1)
+        far_graphs = [
+            far_graph
+            for i, far_graph in enumerate(far_graphs)
+            if i not in ids_to_delete
+        ]
 
-                # self vs self
-                if name == t_name and type(name) != str:
-                    style = "-"
+        # Initial selection
+        initial_selection_names = FARCompoundMetric._select_initial_cms_names(
+            far_graphs
+        )
 
-                plt.plot(self._thresholds, far, style, label=f"{name1} vs {name2}")
+        # Prompt for plotting mode
+        PU.push_indent(1)
+        simple_mode = PU.prompt_yes_no("Should graph-selection be done in simple mode?")
+
+        # Simple mode
+        if simple_mode:
+            FARCompoundMetric._plot_result_simple_mode(
+                far_graphs, initial_selection_names, thresholds
+            )
+            PU.pop_indent()
+            return
+
+        # Custom/advanced mode
+        FARCompoundMetric._plot_result_custom(
+            far_graphs, initial_selection_names, thresholds
+        )
+        PU.pop_indent()
+
+    @staticmethod
+    def _get_possible_options(
+        far_graphs: list[NamedTuple], name: str
+    ) -> tuple[list[str], list[int]]:
+        ids = []
+        names = []
+        for i, (name1, name2, _, _, _) in enumerate(far_graphs):
+            if name1 == name:
+                ids.append(i)
+                names.append(name2)
+        return names, ids
+
+    @staticmethod
+    def _select_initial_cms_names(far_graphs: list[NamedTuple]) -> list[str]:
+        names1, names2, _, _, _ = list(zip(*far_graphs))
+        return PU.prompt_multi_options(
+            "Select what compound models to plot FAR for",
+            list(set(names1)),
+            return_index=False,
+        )
+
+    @staticmethod
+    def _select_cms(
+        far_graphs: list[NamedTuple], name: str, chosen_names: list[str]
+    ) -> list[str]:
+        names, _ = FARCompoundMetric._get_possible_options(far_graphs, name)
+        chosen_ids = [id for id in range(len(names)) if names[id] in chosen_names]
+        return PU.prompt_multi_options(
+            f"Select what compound models to plot FAR for against {name}",
+            names,
+            return_index=False,
+            default_indices=chosen_ids,
+        )
+
+    @staticmethod
+    def _plot(far_graphs: list[NamedTuple], threshold: np.ndarray) -> None:
+        for far_graph in far_graphs:
+            plt.plot(
+                threshold,
+                far_graph.far,
+                far_graph.style,
+                label=f"{far_graph.name1} vs {far_graph.name2}",
+            )
+
         plt.title("FAR as a Function of Similarity Score Threshold")
         plt.xlabel("Similarity Score Threshold")
         plt.ylabel("FAR (False Acceptance Rate)")
         plt.yscale("log")
         plt.legend()
         plt.show(block=True)
+
+    @staticmethod
+    def _plot_result_custom(
+        far_graphs: list[NamedTuple],
+        initial_selection_names: list[int],
+        threshold: np.ndarray,
+    ) -> None:
+        # Custom mode
+        config = [[] for _ in initial_selection_names]
+
+        index = -1
+        nr_special_modes = 0  # exit don't count
+        exit_index = len(config) + nr_special_modes
+        max_str_len = 40
+        while index != exit_index:
+            index = PU.prompt_options(
+                "Select compound model to modify what FAR-graphs to plot",
+                PU.tablify(
+                    [
+                        initial_selection_names,
+                        [
+                            ", ".join(config[id])[:max_str_len] + "..."
+                            for id in range(len(initial_selection_names))
+                        ],
+                    ]
+                )
+                + [
+                    "exit"
+                ],  # * Add more modes here if you want, increment nr_special_modes in that case
+                return_index=True,
+            )
+            if index < len(initial_selection_names):  # specific thing selected
+                config[index] = FARCompoundMetric._select_cms(
+                    far_graphs, initial_selection_names[index], config[index]
+                )
+
+        # Parse far graphs given chosen names
+        selected_far_graphs = []
+        for i, name1 in enumerate(initial_selection_names):
+            names = config[i]
+            for name2 in names:
+                for far_graph in far_graphs:
+                    if far_graph.name1 == name1 and far_graph.name2 == name2:
+                        selected_far_graphs.append(far_graph)
+
+        FARCompoundMetric._plot(selected_far_graphs, threshold)
+
+    @staticmethod
+    def _plot_result_simple_mode(
+        far_graphs: list[NamedTuple], far_graph_names: list[str], threshold: np.ndarray
+    ) -> None:
+        options = [
+            "dataset vs itself",
+            "population vs dataset(s)",
+            "population vs other population(s)",
+            "population vs itself",
+        ]
+
+        picked_options = PU.prompt_multi_options(
+            "Select the types of FAR-graphs to be plotted", options
+        )
+
+        # Only plot picked options
+        picked_far_graphs = [
+            far_graph
+            for far_graph in far_graphs
+            if far_graph.far_type in picked_options
+            and far_graph.name1 in far_graph_names
+        ]
+        FARCompoundMetric._plot(picked_far_graphs, threshold)
 
     def _parse_context(
         self, context: CompoundModelFactoryContext
@@ -327,7 +500,7 @@ class FARCompoundMetric(CompoundMetric):
             output[i] = np.sort(similarities)[-1]
 
         # Return similarity scores between samples and dataset
-        return output
+        return self._calc_far(similarities)
 
     def _population_vs_populations_far(
         self,
@@ -355,7 +528,7 @@ class FARCompoundMetric(CompoundMetric):
         for i, population in tqdm(
             enumerate(populations_vs),
             position=0,
-            desc="Populations vs population similarity",
+            desc="Population vs population similarity",
             total=len(populations_vs),
         ):
             pop_name = population.get_name()
