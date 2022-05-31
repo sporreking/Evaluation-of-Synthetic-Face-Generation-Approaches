@@ -509,7 +509,7 @@ class CompoundModelFactoryContext:
         # Init properties
         self._populations = dict()
         self._filter_bits = dict()
-
+        self._cmms = dict()
         self._factory_names = [factory.get_name() for factory in factories]
 
         # Extract properties
@@ -519,6 +519,7 @@ class CompoundModelFactoryContext:
             self._filter_bits[name] = [
                 (filter.get_bit(), filter.get_name()) for filter in filters
             ]
+            self._cmms[name] = factory.get_compound_metric_managers()
 
         # Give all factories the context
         for factory in factories:
@@ -529,7 +530,15 @@ class CompoundModelFactoryContext:
             self._factory_names == other.factory_names
             and self._populations == other.populations
             and self._filter_bits == other.filter_bits
+            and self._cmms == other.cmms
         )
+
+    @property
+    def compound_metric_managers(self) -> list[CompoundMetricManager]:
+        """
+        Get the compound metric managers of each factory in the context.
+        """
+        return self._cmms
 
     @property
     def factory_names(self) -> list[str]:
