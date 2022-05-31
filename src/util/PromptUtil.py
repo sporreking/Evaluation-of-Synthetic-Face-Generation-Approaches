@@ -481,7 +481,7 @@ def prompt_multi_options(
     default_file: Union[Path, str] = None,
     return_index: bool = False,
     allow_empty: bool = False,
-) -> Union[Any, int]:
+) -> Union[list[Any], list[int]]:
     """
     Prompt the user with a `directive`, allowing them to pick multiple options.
 
@@ -506,7 +506,7 @@ def prompt_multi_options(
         ValueError: If both a `default_file` and `default_indices` were supplied.
 
     Returns:
-        Union[Any, int]: The selected items, or their indices if `return_index=True`.
+        list[Any] | list[int]: The selected items, or their indices if `return_index=True`.
     """
     push_indent(1)
 
