@@ -174,6 +174,9 @@ def project_images(
 
             projections[i, :] = backbone(img).cpu().numpy()
 
+    # Normalize projections
+    projections /= np.linalg.norm(projections, axis=1).reshape((-1, 1))
+
     # Save file if applicable
     if file_name_suffix is not None:
         _file_jar.store_file(
@@ -181,7 +184,7 @@ def project_images(
             lambda p: np.save(p, projections),
         )
 
-    return projections / np.linalg.norm(projections, axis=1).reshape((-1, 1))
+    return projections
 
 
 def visualize_ffhq256_vs_ffhq256():

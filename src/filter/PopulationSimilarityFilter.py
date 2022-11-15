@@ -44,7 +44,7 @@ class PopulationSimilarityFilter(SampleMetricFilter):
                 Defaults to 0.99.
             threshold (float, optional): If not none, this threshold will be used instead of
                 inferring threshold from `quantile`. For example, all samples above `threshold` will
-                be filtered out. Defaults to 2.412, inferred from the FFHQ256 vs FFHQ256.
+                be filtered out. Defaults to 0.4782, inferred from the FFHQ256 vs FFHQ256.
             display_bad_images (bool, optional): Displays. Defaults to False.
 
         Returns:
@@ -52,7 +52,7 @@ class PopulationSimilarityFilter(SampleMetricFilter):
         """
         # Fetch parameters
         quantile = parameters["quantile"] if "quantile" in parameters else 0.99
-        threshold = parameters["threshold"] if "threshold" in parameters else 2.412
+        threshold = parameters["threshold"] if "threshold" in parameters else 0.4782
         display_bad_images = (
             parameters["display_bad_images"]
             if "display_bad_images" in parameters
