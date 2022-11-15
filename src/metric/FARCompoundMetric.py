@@ -30,7 +30,7 @@ DS_VS_DS_SETUP_NAME = "DATASET_VS_DATASET"
 
 # Threshold constants
 T_MIN = 0
-T_MAX = 10
+T_MAX = 1
 T_STEPS = 50
 
 
@@ -370,7 +370,7 @@ class FARCompoundMetric(CompoundMetric):
                 threshold,
                 far_graph.far,
                 far_graph.style,
-                label=f"{far_graph.name1} vs {far_graph.name2}",
+                label=f"{far_graph.name1} vs {'self' if far_graph.name1 == far_graph.name2 else far_graph.name2}",
             )
 
         plt.title("FAR as a Function of Similarity Score Threshold")
@@ -500,7 +500,7 @@ class FARCompoundMetric(CompoundMetric):
             output[i] = np.sort(similarities)[-1]
 
         # Return similarity scores between samples and dataset
-        return self._calc_far(similarities)
+        return self._calc_far(output)
 
     def _population_vs_populations_far(
         self,

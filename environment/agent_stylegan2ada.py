@@ -109,8 +109,6 @@ def main():
                             device,
                         ),
                         None,
-                        truncation_psi=TRUNCATION_PSI,
-                        truncation_cutoff=TRUNCATION_CUTOFF,
                     )[:, 0, :]
                     .cpu()
                     .numpy()
@@ -153,20 +151,11 @@ def get_generator():
         (
             lambda w: G.synthesis(
                 w.repeat(1, W_PLUS_DIM, 1),
-                noise_mode=NOISE_MODE,
                 force_fp32=True,
             )
         )
         if LAUNCH_MODE == LAUNCH_MODE_W
-        else (
-            lambda z: G(
-                z,
-                None,
-                truncation_psi=TRUNCATION_PSI,
-                truncation_cutoff=TRUNCATION_CUTOFF,
-                noise_mode=NOISE_MODE,
-            )
-        )
+        else (lambda z: G(z, None))
     )
 
 
