@@ -30,7 +30,7 @@ DS_VS_DS_SETUP_NAME = "DATASET_VS_DATASET"
 
 # Threshold constants
 T_MIN = 0
-T_MAX = 10
+T_MAX = 1
 T_STEPS = 50
 
 
@@ -180,19 +180,19 @@ class FARCompoundMetric(CompoundMetric):
             skip_if_missing=True,
             **parameters,
         ).to_numpy()
-        if similarities.shape[0] == len(filtered_ids):
+        """if similarities.shape[0] == len(filtered_ids):
             far_pop_vs_ds = self._calc_far(similarities)
-        else:
-            far_pop_vs_ds = self._population_vs_dataset_far(filter_bit)
+        else:"""
+        far_pop_vs_ds = self._population_vs_dataset_far(filter_bit)
 
         # This population vs populations/filter_bits
 
-        # Get context
-        populations_vs = list(context.populations.values())
+        # Get context TODO: REVERT REMOVAL
+        """populations_vs = list(context.populations.values())
         filter_bits_vs = list(context.filter_bits.values())
         far_pop_vs_pops = self._population_vs_populations_far(
             filter_bit, filter_bits_vs, populations_vs
-        )
+        )"""
 
         # Format result
         far = dict()
@@ -203,7 +203,7 @@ class FARCompoundMetric(CompoundMetric):
                 ds_name,
                 None,
             ): far_pop_vs_ds
-        } | far_pop_vs_pops
+        }  # | far_pop_vs_pops
         far[ds_name] = {ds_name: self._far_ds_vs_ds}
 
         # Save results
@@ -370,7 +370,7 @@ class FARCompoundMetric(CompoundMetric):
                 threshold,
                 far_graph.far,
                 far_graph.style,
-                label=f"{far_graph.name1} vs {far_graph.name2}",
+                label=f"{far_graph.name1} vs {'self' if far_graph.name1 == far_graph.name2 else far_graph.name2}",
             )
 
         plt.title("FAR as a Function of Similarity Score Threshold")
@@ -500,7 +500,7 @@ class FARCompoundMetric(CompoundMetric):
             output[i] = np.sort(similarities)[-1]
 
         # Return similarity scores between samples and dataset
-        return self._calc_far(similarities)
+        return self._calc_far(output)
 
     def _population_vs_populations_far(
         self,

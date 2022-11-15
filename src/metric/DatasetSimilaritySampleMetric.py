@@ -85,7 +85,9 @@ class DatasetSimilaritySampleMetric(SampleMetric):
         )
 
         # Project sample images
-        sample_projections = MS.project_images(uris)
+        sample_projections = MS.load_projected_images(
+            self._smm.get_population().get_name()
+        )
 
         # Derive similarity scores and find largest per sample
         output = np.zeros(sample_projections.shape[0])

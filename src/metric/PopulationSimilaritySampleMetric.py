@@ -82,7 +82,9 @@ class PopulationSimilaritySampleMetric(SampleMetric):
         uris = list(df[self._population.COLUMN_URI])
 
         # Project population images
-        sample_projections = MS.project_images(uris)
+        sample_projections = MS.load_projected_images(
+            self._smm.get_population().get_name()
+        )
 
         # Target population (to calculate scores for)
         target_projections = sample_projections[[df.index.get_loc(id) for id in ids]]
